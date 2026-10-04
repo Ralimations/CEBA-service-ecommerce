@@ -1,0 +1,9 @@
+node_modules
+.next
+.next-test
+data
+initial_prompt.xml
+package-lock.json
+artifacts
+database/schema.sql
+next-env.d.ts

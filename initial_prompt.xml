@@ -1,0 +1,3048 @@
+# PHASE 1 BUILD INSTRUCTION
+## Event Services Marketplace Web Application
+
+You are the lead full-stack engineer responsible for building **Phase 1 of a functional marketplace web application for events, venues, suppliers, and event-related services**.
+
+This is NOT a wireframe-only project.
+
+This is NOT a static mockup.
+
+This is NOT merely a landing page.
+
+You are expected to create an actual working web application with functional user flows, authentication, local persistence, dashboards, marketplace browsing, service listings, bookings, provider management, administrator controls, notifications, bundled packages, reviews, mock escrow, and the different perspectives required by the platform.
+
+The application can use local development infrastructure for Phase 1.
+
+Production hosting, production payments, production email/SMS, enterprise verification, and other external services may remain WIP if necessary.
+
+However:
+
+> Anything that can reasonably function locally MUST function locally.
+
+Do not create buttons that do nothing unless they are explicitly marked as a Phase 2/WIP feature.
+
+---
+
+# 1. PRODUCT CONCEPT
+
+The product is an **event-services marketplace** inspired by concepts from:
+
+- Grab
+- Foodpanda
+- Shopee
+- Airbnb-style provider listings
+- Event planning marketplaces
+
+But instead of products, food, or rides, customers browse and book:
+
+- Catering
+- Event Hosts
+- Event Design / Decoration
+- Photography
+- Hair and Makeup
+- Pop-up Bars
+- Singing / Live Performers
+- Wedding Planning
+- Venues
+- Other Event Services
+
+There are three major user perspectives:
+
+1. CUSTOMER / CLIENT
+2. SERVICE PROVIDER / SUPPLIER
+3. ADMINISTRATOR
+
+There is also an administrative "middleman" role in handling:
+
+- bundled services
+- disputes
+- escrow
+- provider verification
+- badges
+- vouchers
+- subscriptions
+- featured listings
+- customer support
+
+---
+
+# 2. PHASE 1 PRIMARY OBJECTIVE
+
+Create a locally runnable but convincingly functional MVP/prototype demonstrating the full business concept.
+
+The purpose of Phase 1 is to allow us to demonstrate:
+
+- customer registration
+- provider registration
+- login/logout
+- role-based dashboards
+- provider profiles
+- service listings
+- packages
+- search and filtering
+- availability filtering
+- individual booking
+- bundled service booking
+- booking management
+- reviews
+- ratings
+- provider badges
+- subscriptions
+- VIP listing priority
+- paid/featured listing concept
+- customer rank system
+- vouchers
+- referrals
+- first-user benefits
+- notifications
+- FAQ chatbot
+- admin support handoff
+- administrator dashboard
+- mock escrow
+- QR/digital-handshake booking security
+- dashboard analytics
+
+The system should feel like an actual early-stage startup product instead of a collection of disconnected screens.
+
+---
+
+# 3. HARD REQUIREMENTS
+
+Do NOT stop after creating:
+
+- a PRD
+- schemas
+- mockups
+- route definitions
+- wireframes
+- static HTML
+- a landing page
+
+Proceed into implementation.
+
+Every important screen should be navigable.
+
+Every important CTA should work.
+
+Where a production integration does not yet exist, implement a functional local equivalent.
+
+Examples:
+
+Production payment unavailable?
+
+Use a clearly labeled mock payment and escrow ledger.
+
+Production file hosting unavailable?
+
+Use local files or seeded image URLs.
+
+Production email unavailable?
+
+Use in-app notifications.
+
+Production SMS unavailable?
+
+Use in-app notifications.
+
+Production QR scanner unavailable?
+
+Generate QR codes and also provide a manual one-time-code fallback.
+
+---
+
+# 4. EXISTING PROJECT HANDLING
+
+Before making changes:
+
+1. Inspect the repository.
+2. Identify the existing framework and architecture.
+3. Preserve existing useful work.
+4. Do not rewrite the project unnecessarily.
+5. Do not remove working functionality unless required.
+6. Check package.json and project documentation.
+7. Check environment configuration.
+8. Check existing database/schema files.
+
+If the repository is empty or does not yet contain a viable application, create the application from scratch.
+
+---
+
+# 5. DEFAULT TECH STACK
+
+If no suitable stack already exists, use a modern full-stack TypeScript architecture.
+
+Recommended default:
+
+- Next.js
+- TypeScript
+- React
+- Tailwind CSS
+- SQLite for Phase 1 local database
+- Prisma or another reliable ORM
+- server-side API/actions
+- secure password hashing
+- database-backed or secure server-side sessions
+
+Use current stable packages available in the environment.
+
+Do NOT store passwords as plaintext.
+
+Do NOT rely primarily on localStorage for important business data.
+
+LocalStorage may be used only for harmless client preferences.
+
+Important application data should live in SQLite/database storage.
+
+Prefer simple maintainable architecture over unnecessary microservices.
+
+This is an MVP.
+
+Do not build NASA mission control for someone trying to hire a photographer.
+
+---
+
+# 6. APPLICATION NAME
+
+Until an official brand name is supplied, use:
+
+**Event Marketplace**
+
+Make the product name configurable from one centralized application configuration file so it can easily be renamed later.
+
+Do not hardcode the project name across hundreds of components.
+
+---
+
+# 7. ROLE-BASED ACCESS
+
+Create these roles:
+
+```text
+CUSTOMER
+PROVIDER
+ADMIN
+```
+
+Permissions must actually be enforced.
+
+A customer must not be able to access provider management pages simply by manually typing the URL.
+
+A provider must not be able to access administrator pages.
+
+An administrator can view and manage platform-level information.
+
+Implement route protection.
+
+---
+
+# 8. AUTHENTICATION
+
+Create functional:
+
+## Registration
+
+A user must choose:
+
+- Customer
+- Service Provider
+
+Admin accounts are created through seed/database configuration and NOT through public registration.
+
+Required customer registration:
+
+- Full name
+- Email
+- Password
+- Confirm password
+
+Optional:
+
+- Phone
+- Profile image
+
+Provider registration:
+
+- Owner/contact name
+- Business/provider name
+- Email
+- Password
+- Phone
+- Business description
+- Primary service category
+
+Provider should finish additional profile setup after registration.
+
+## Login
+
+Functional:
+
+- Email
+- Password
+- Remember session where appropriate
+- Logout
+
+Create validation.
+
+Display meaningful errors.
+
+Create seeded demo accounts.
+
+Example:
+
+```text
+admin@demo.local
+provider@demo.local
+customer@demo.local
+```
+
+Use documented development-only passwords.
+
+Put these accounts inside README documentation.
+
+---
+
+# 9. CUSTOMER EXPERIENCE
+
+Create a customer-facing marketplace.
+
+Important navigation:
+
+- Home
+- Browse Services
+- Categories
+- Bundles
+- My Bookings
+- Vouchers
+- Notifications
+- Profile
+
+Optional:
+
+- Recommended
+- Featured
+- Recently Viewed
+
+---
+
+# 10. CUSTOMER HOME PAGE
+
+The customer homepage should feel like an actual marketplace.
+
+Include:
+
+## Hero/Search
+
+Search:
+
+"What service are you looking for?"
+
+Allow:
+
+- service/category
+- event date
+- budget
+
+## Categories
+
+Cards for:
+
+- Catering
+- Event Hosts
+- Event Design
+- Photography
+- Hair & Makeup
+- Pop-up Bars
+- Performers
+- Wedding Planning
+- Venues
+- Other
+
+## Featured Providers
+
+These can include providers who:
+
+- purchased featured placement
+- have VIP status
+
+Clearly label paid priority appropriately with labels such as:
+
+**Featured**
+
+or
+
+**Sponsored**
+
+Do not make paid placement appear equivalent to trusted-rating certification.
+
+## Top Rated
+
+Organic section based primarily on rating.
+
+## Available for Your Date
+
+If the user selected an event date.
+
+## Bundled Packages
+
+Show administrator-curated package combinations.
+
+## Promotional/Voucher Section
+
+Display:
+
+- first-user promotion
+- seasonal voucher
+- referral incentive
+
+---
+
+# 11. SERVICE SEARCH
+
+Create actual search.
+
+Search fields:
+
+- keywords
+- provider/business name
+- service name
+
+Filters:
+
+- Service Category
+- Minimum Price
+- Maximum Price
+- Event Date
+- Provider Rating
+- Availability
+- Classic/VIP if useful
+- Badge / Trusted Provider
+- Individual Service / Bundled Service
+
+Sorting:
+
+- Recommended
+- Rating
+- Price Low → High
+- Price High → Low
+- Most Popular
+
+VIP and paid placements may influence the Recommended sort.
+
+Do NOT silently distort explicitly selected price/rating sorting.
+
+---
+
+# 12. DATE AVAILABILITY
+
+Provider availability must be functional.
+
+Providers can mark dates as:
+
+- Available
+- Unavailable
+- Booked
+
+Confirmed bookings should automatically affect availability.
+
+When the customer chooses an event date:
+
+Services unavailable on that date should:
+
+- be excluded when "Available Only" is selected
+
+or
+
+- show as unavailable
+
+Prevent impossible double-bookings when appropriate.
+
+---
+
+# 13. PROVIDER PROFILE
+
+Each provider must have a public profile.
+
+Display:
+
+- Provider/business name
+- Provider avatar/logo
+- Cover image
+- Business description
+- Categories
+- Services
+- Packages
+- Starting price / price range
+- Portfolio
+- Rating
+- Review count
+- Completed bookings
+- Badges
+- Subscription status if relevant
+- Availability/calendar summary
+- Contact/booking CTA
+- Service area if available
+
+Create sections/tabs:
+
+- Overview
+- Services
+- Packages
+- Portfolio
+- Reviews
+- Availability
+
+---
+
+# 14. SERVICE LISTING
+
+Providers should be able to create services.
+
+Service fields:
+
+- Service title
+- Category
+- Description
+- Base price
+- Pricing unit/type
+- Estimated duration if applicable
+- Maximum/minimum guest count if applicable
+- Images
+- Add-ons
+- Availability
+- Status
+
+Listing states:
+
+```text
+DRAFT
+ACTIVE
+PAUSED
+ARCHIVED
+```
+
+Provider can:
+
+- create
+- edit
+- publish
+- pause
+- archive
+
+services.
+
+---
+
+# 15. SERVICE PACKAGES
+
+Each service can contain packages.
+
+Example photography:
+
+```text
+Basic
+₱5,000
+
+Standard
+₱8,000
+
+Premium
+₱12,000
+```
+
+Package fields:
+
+- package name
+- description
+- price
+- inclusions
+- exclusions
+- duration
+- custom terms
+- add-ons
+
+Allow customers to choose a package during booking.
+
+---
+
+# 16. BUNDLED EVENT PACKAGES
+
+This is an important differentiator.
+
+Bundled services combine packages from DIFFERENT providers.
+
+Example:
+
+## Wedding Starter Package
+
+Includes:
+
+- Photographer A → Standard Photography Package
+- Makeup Artist B → Bridal Package
+- Host C → 4-Hour Hosting Package
+- Decorator D → Basic Decoration Package
+
+Bundles are curated/supervised by the administrator.
+
+---
+
+# 17. BUNDLE SUPPLIER TERMS
+
+Providers must be able to define or approve what they are willing to offer when included in bundles.
+
+The provider can specify:
+
+- eligible package
+- bundle-specific price
+- bundle inclusions
+- exclusions
+- special terms
+
+The administrator builds a bundle using providers/packages that have agreed to bundle participation.
+
+Suggested workflow:
+
+```text
+Admin creates Bundle Draft
+
+↓
+
+Admin selects participating provider packages
+
+↓
+
+Providers review participation terms
+
+↓
+
+Providers Accept / Reject
+
+↓
+
+All providers approved
+
+↓
+
+Admin publishes bundle
+```
+
+For Phase 1 this workflow must at minimum be represented and function locally.
+
+A bundle should not become fully bookable until required supplier approvals are complete.
+
+---
+
+# 18. BUNDLE AVAILABILITY
+
+Bundle availability is determined by the availability of ALL participating providers.
+
+If:
+
+Photographer = available
+
+Makeup Artist = available
+
+Host = unavailable
+
+Then:
+
+The entire bundle should be considered unavailable for that date.
+
+Implement this intersection logic.
+
+---
+
+# 19. BOOKING REQUEST
+
+Customer booking form:
+
+- Event date
+- Event type
+- Selected service
+- Selected package
+- Venue/location
+- Guest count if applicable
+- Additional requests
+- Contact information
+- Voucher
+- Price summary
+
+For bundle:
+
+Display every supplier/package involved.
+
+Customer should clearly understand what they are booking.
+
+---
+
+# 20. BOOKING STATES
+
+Use a controlled booking state machine.
+
+Suggested:
+
+```text
+PENDING
+ACCEPTED
+CONFIRMED
+IN_PROGRESS
+COMPLETION_PENDING
+COMPLETED
+CANCELLED
+DISPUTED
+```
+
+Avoid arbitrary status strings throughout the project.
+
+---
+
+# 21. CUSTOMER BOOKING MANAGEMENT
+
+Customer dashboard:
+
+## My Bookings
+
+Tabs:
+
+- All
+- Pending
+- Confirmed
+- Upcoming
+- Completed
+- Cancelled
+
+Booking card shows:
+
+- Provider
+- Service
+- Package
+- Event Date
+- Amount
+- Status
+
+Booking details page should show:
+
+- service information
+- provider
+- contact details
+- booking timeline
+- amount
+- voucher
+- escrow status
+- event information
+- special request
+- QR handshake information where applicable
+
+---
+
+# 22. PROVIDER BOOKING MANAGEMENT
+
+Provider dashboard:
+
+## Booking Requests
+
+Tabs:
+
+- New
+- Accepted
+- Confirmed
+- Upcoming
+- In Progress
+- Completed
+- Cancelled
+
+Provider may:
+
+- View request
+- Accept
+- Reject
+- Contact customer through internal messaging/support structure if implemented
+- Start digital handshake
+- Confirm service completion
+- View payment/escrow state
+
+When a provider rejects a request, require an optional/required reason.
+
+---
+
+# 23. MOCK PAYMENT SYSTEM
+
+Do NOT integrate real payment processing in Phase 1 unless infrastructure already exists.
+
+Implement a **mock checkout/payment system**.
+
+Clearly label it:
+
+> Development Payment Simulation
+
+Customer sees:
+
+- booking subtotal
+- service fees if applicable
+- voucher discounts
+- total
+
+Customer clicks:
+
+**Pay & Reserve**
+
+The application creates:
+
+- payment record
+- escrow hold
+- booking confirmation
+
+No real currency is transferred.
+
+---
+
+# 24. ESCROW SYSTEM
+
+Create a mock escrow ledger.
+
+Booking financial states:
+
+```text
+UNPAID
+HELD_IN_ESCROW
+PARTIALLY_RELEASED
+RELEASED
+REFUNDED
+DISPUTED
+```
+
+When customer completes mock payment:
+
+Money becomes:
+
+```text
+HELD_IN_ESCROW
+```
+
+not immediately paid to provider.
+
+Provider dashboard displays:
+
+```text
+Escrow Pending
+```
+
+After successful completion handshake:
+
+```text
+RELEASED
+```
+
+Provider dashboard then displays:
+
+```text
+Released Earnings
+```
+
+Create transaction records rather than merely changing one number.
+
+---
+
+# 25. TWO-GATE DIGITAL HANDSHAKE SECURITY
+
+Implement the proposed **two-gate QR handshake system**.
+
+Purpose:
+
+Protect:
+
+- customer
+- supplier
+- escrow
+- service completion
+
+It functions similarly to confirmation between rider and customer in delivery/ride platforms.
+
+---
+
+# 26. GATE 1 — SERVICE START
+
+At or near the event:
+
+Generate a unique booking check-in token.
+
+Display it as:
+
+- QR code
+- one-time numeric/alphanumeric code fallback
+
+One party displays it.
+
+The other verifies it.
+
+Once verified:
+
+```text
+Booking:
+CONFIRMED → IN_PROGRESS
+```
+
+Record:
+
+- timestamp
+- customer
+- provider
+- token verification
+- booking ID
+
+Token must become invalid after use.
+
+---
+
+# 27. GATE 2 — SERVICE COMPLETION
+
+At the end of the service:
+
+Generate a separate completion token.
+
+Counterparty verifies it.
+
+Once verified:
+
+```text
+IN_PROGRESS
+↓
+COMPLETION_PENDING
+↓
+COMPLETED
+```
+
+Then mock escrow is released.
+
+Record an immutable-style local event log:
+
+- booking
+- actor
+- timestamp
+- event
+- token verification
+
+Allow fallback manual confirmation by an administrator in disputes.
+
+---
+
+# 28. QR IMPLEMENTATION
+
+Use a QR generation library if appropriate.
+
+If browser/device camera scanning is simple and stable to implement, implement scanner support.
+
+Regardless, also implement:
+
+**Enter Verification Code**
+
+This allows the Phase 1 demo to work even when camera access is unavailable.
+
+Never make the QR scanner the only way to demonstrate this feature.
+
+---
+
+# 29. DISPUTE FLOW
+
+Customer or provider can raise a dispute BEFORE escrow release.
+
+Examples:
+
+- supplier no-show
+- client no-show
+- service incomplete
+- false completion
+- incorrect package
+- cancellation issue
+
+Create:
+
+```text
+OPEN
+UNDER_REVIEW
+RESOLVED_CUSTOMER
+RESOLVED_PROVIDER
+CLOSED
+```
+
+Administrator can review disputes.
+
+For Phase 1:
+
+support mock actions:
+
+- release funds
+- refund customer
+- partially refund if desired
+- close dispute
+
+Record admin action.
+
+---
+
+# 30. PROVIDER SUBSCRIPTIONS
+
+Providers have:
+
+```text
+CLASSIC
+VIP
+```
+
+Classic is the standard plan.
+
+VIP has perks.
+
+Phase 1 should allow providers to switch through simulated subscription checkout.
+
+No actual recurring payment is required.
+
+---
+
+# 31. VIP BENEFITS
+
+VIP providers may receive:
+
+- higher priority in Recommended results
+- additional analytics
+- enhanced profile presentation
+- VIP indicator if product team wants this
+- more portfolio images
+- promotional tools
+- access to featured placement discounts
+
+Do not automatically give a provider a "Trusted" badge solely because they pay for VIP.
+
+Trust and payment must remain conceptually separate.
+
+---
+
+# 32. FEATURED / PRIORITY LISTINGS
+
+Create a separate monetization feature.
+
+Providers may purchase mock:
+
+- Homepage Feature
+- Category Feature
+- Search Priority
+
+Example durations:
+
+- 3 days
+- 7 days
+- 30 days
+
+Admin can configure mock price.
+
+Listings promoted through this system should display:
+
+**Featured**
+
+or
+
+**Sponsored**
+
+Create:
+
+- start date
+- end date
+- placement
+- status
+
+Automatically expire featured placement based on date.
+
+---
+
+# 33. TRUSTED RATING / BEST SERVICE BADGES
+
+Providers can earn badges.
+
+Do NOT manually hardcode a badge on profiles.
+
+Create configurable eligibility logic.
+
+Default Phase 1 example:
+
+## Trusted Provider
+
+Requirements:
+
+- minimum average rating: 4.5
+- minimum completed bookings: 5
+- no unresolved serious disputes
+
+## Best Service
+
+Potential requirements:
+
+- minimum average rating: 4.7
+- minimum 10 completed bookings
+- category performance threshold
+
+Make thresholds configurable from admin settings.
+
+Administrator should be able to:
+
+- view eligible providers
+- grant badge
+- revoke badge
+- adjust thresholds
+
+Optionally allow automatic eligibility calculation.
+
+---
+
+# 34. REVIEWS
+
+Only customers with a COMPLETED booking may leave reviews.
+
+Review fields:
+
+- rating 1-5
+- written review
+- booking
+- provider
+- service
+- timestamp
+
+Optional rating dimensions:
+
+- quality
+- communication
+- punctuality
+- value
+
+Prevent duplicate reviews for the same booking unless editing is allowed.
+
+Provider's rating should recalculate from reviews.
+
+---
+
+# 35. CUSTOMER RANK / LOYALTY SYSTEM
+
+Customers gain rank based on activity.
+
+Ranks:
+
+```text
+BRONZE
+SILVER
+GOLD
+PLATINUM
+```
+
+Use configurable thresholds.
+
+Example development values:
+
+```text
+Bronze:
+0 completed bookings
+
+Silver:
+3 completed bookings OR qualifying spend
+
+Gold:
+8 completed bookings OR qualifying spend
+
+Platinum:
+15 completed bookings OR qualifying spend
+```
+
+Do NOT scatter thresholds through components.
+
+Put them in database-backed settings or centralized configuration.
+
+---
+
+# 36. CUSTOMER RANK BENEFITS
+
+Example benefits:
+
+Bronze:
+
+- standard access
+
+Silver:
+
+- occasional voucher
+
+Gold:
+
+- larger voucher eligibility
+- priority support
+
+Platinum:
+
+- better promotions
+- exclusive voucher eligibility
+- loyalty perks
+
+For Phase 1 use simulated/configurable rewards.
+
+Customer profile should show:
+
+- current tier
+- progress bar
+- next tier
+- remaining bookings/spend
+
+---
+
+# 37. FIRST-TIME CUSTOMER BENEFIT
+
+Automatically give new CUSTOMER accounts a welcome voucher.
+
+Example:
+
+```text
+WELCOME10
+10% off
+maximum discount configurable
+minimum spend configurable
+one use
+```
+
+Do not automatically give this to provider accounts.
+
+---
+
+# 38. VOUCHER SYSTEM
+
+Create voucher management.
+
+Fields:
+
+- voucher code
+- description
+- type
+- value
+- minimum booking value
+- max discount
+- valid from
+- expiration
+- usage limit
+- per-user limit
+- customer rank requirement
+- first-user-only toggle
+- category restriction
+- active/inactive
+
+Types:
+
+```text
+FIXED
+PERCENTAGE
+```
+
+Validate vouchers properly.
+
+Do not allow expired vouchers.
+
+---
+
+# 39. SEASONAL VOUCHERS
+
+Administrator can create promotions such as:
+
+- Valentine's
+- Graduation
+- Wedding Season
+- Christmas
+- Fiesta
+- Anniversary
+
+These do not need automatic holiday generation.
+
+Admin simply needs tools to create and schedule them.
+
+---
+
+# 40. REFERRAL SYSTEM
+
+Every customer receives a referral code.
+
+Example:
+
+```text
+RAL1234
+```
+
+New users can enter referral code during registration or later where appropriate.
+
+When referral criteria are met:
+
+- referrer receives voucher
+- referred customer receives voucher
+
+For Phase 1 define completion criteria simply, such as:
+
+"Reward after referred customer completes their first booking."
+
+Create functional tracking.
+
+Avoid repeatedly granting rewards for the same referral.
+
+---
+
+# 41. NOTIFICATIONS
+
+Create an in-app notification system.
+
+Notification bell with unread counter.
+
+Examples:
+
+Customer:
+
+- Booking submitted
+- Booking accepted
+- Booking rejected
+- Booking confirmed
+- Booking reminder
+- QR ready
+- Service started
+- Booking completed
+- Escrow released
+- Voucher received
+
+Provider:
+
+- New booking
+- Booking cancelled
+- Bundle invitation
+- Review received
+- Escrow released
+- Featured placement expiring
+
+Admin:
+
+- New provider
+- New dispute
+- Bundle pending approval
+- support request
+
+Notifications must be stored in the database.
+
+Allow:
+
+- mark as read
+- mark all read
+
+---
+
+# 42. FAQ CHATBOT
+
+Implement a simple Phase 1 customer-support bot.
+
+This is NOT required to use AI.
+
+A deterministic FAQ system is acceptable and preferred for reliability.
+
+FAQ categories:
+
+- How booking works
+- How payment works
+- Escrow
+- Cancellation
+- Refund
+- Provider verification
+- Vouchers
+- Customer ranks
+- Bundle packages
+- Reviews
+- Becoming a provider
+
+Bot interface:
+
+User enters question.
+
+↓
+
+Search FAQ keywords/intents.
+
+↓
+
+Return matching answer.
+
+If bot cannot answer:
+
+Show:
+
+**Contact Support / Ask Administrator**
+
+This creates a support ticket.
+
+---
+
+# 43. ADMIN SUPPORT HANDOFF
+
+Support ticket:
+
+- user
+- subject
+- message
+- related booking if applicable
+- status
+- admin response
+- timestamp
+
+Statuses:
+
+```text
+OPEN
+IN_PROGRESS
+RESOLVED
+CLOSED
+```
+
+Administrator should manage these from admin dashboard.
+
+---
+
+# 44. ADMIN DASHBOARD
+
+Build an actual administrator dashboard.
+
+Sections:
+
+## Overview
+
+Metrics:
+
+- total customers
+- total providers
+- active providers
+- bookings
+- completed bookings
+- booking value
+- mock escrow held
+- disputes
+- VIP providers
+- active featured placements
+
+Charts can use local seeded/live database data.
+
+---
+
+# 45. ADMIN USER MANAGEMENT
+
+Admin can view:
+
+- customers
+- providers
+- status
+- joined date
+- activity
+
+Admin actions:
+
+- inspect profile
+- suspend
+- unsuspend
+- deactivate if required
+
+Be careful not to permanently delete relational data by default.
+
+---
+
+# 46. ADMIN PROVIDER MANAGEMENT
+
+Admin can:
+
+- view provider
+- inspect services
+- inspect rating
+- view disputes
+- approve/suspend provider
+- grant/revoke badge
+- inspect subscription
+- inspect bundle participation
+
+---
+
+# 47. ADMIN SERVICE MANAGEMENT
+
+Admin can:
+
+- view listings
+- disable inappropriate listing
+- restore listing
+- inspect packages
+- search/filter services
+
+---
+
+# 48. ADMIN CATEGORY MANAGEMENT
+
+Admin can:
+
+- create category
+- rename category
+- activate/deactivate category
+
+Seed initial categories.
+
+---
+
+# 49. ADMIN BUNDLE MANAGEMENT
+
+Admin can:
+
+- create bundle
+- edit bundle
+- select provider packages
+- request provider approval
+- see acceptance/rejection status
+- configure bundle price/discount
+- publish
+- unpublish
+- archive
+
+---
+
+# 50. ADMIN VOUCHER MANAGEMENT
+
+Admin can:
+
+- create
+- edit
+- activate
+- deactivate
+- schedule
+- delete/archive
+
+vouchers.
+
+---
+
+# 51. ADMIN SUBSCRIPTION MANAGEMENT
+
+Display:
+
+- Classic providers
+- VIP providers
+- subscription start
+- subscription expiration
+- mock payment
+- subscription status
+
+Admin can manually modify status for development/testing.
+
+---
+
+# 52. ADMIN FEATURED PLACEMENT MANAGEMENT
+
+Admin can:
+
+- create placement
+- approve placement
+- schedule placement
+- expire placement
+- see provider
+- placement type
+- duration
+- mock revenue
+
+---
+
+# 53. ADMIN BADGE MANAGEMENT
+
+Display:
+
+- eligible providers
+- current badge holders
+- eligibility score
+- rating
+- completed jobs
+- disputes
+
+Allow:
+
+- Grant
+- Revoke
+
+Create configurable rules.
+
+---
+
+# 54. ADMIN ESCROW MANAGEMENT
+
+Administrator should see:
+
+- Booking
+- Customer
+- Provider
+- Amount
+- Escrow status
+- Check-in status
+- Completion status
+- Dispute
+
+Actions for development:
+
+- Release
+- Refund
+- Freeze
+- Resolve dispute
+
+Require confirmation modal.
+
+Log every action.
+
+---
+
+# 55. PROVIDER DASHBOARD
+
+Provider dashboard sections:
+
+- Overview
+- My Services
+- Packages
+- Bookings
+- Calendar
+- Bundles
+- Reviews
+- Subscription
+- Promotions / Featured Listings
+- Earnings
+- Notifications
+- Profile
+
+Overview cards:
+
+- upcoming events
+- pending requests
+- completed jobs
+- rating
+- mock earnings
+- escrow pending
+- profile views if implemented
+
+---
+
+# 56. PROVIDER PROFILE EDITOR
+
+Allow provider to edit:
+
+- business name
+- description
+- phone
+- email
+- service categories
+- location/service area
+- portfolio
+- logo
+- cover
+- social/contact information if desired
+
+Changes should persist.
+
+---
+
+# 57. PROVIDER CALENDAR
+
+Calendar should display:
+
+- unavailable dates
+- pending booking dates
+- confirmed bookings
+- completed bookings
+
+Provider can manually block dates.
+
+Do not allow blocking a date containing an existing confirmed booking without warning.
+
+---
+
+# 58. PROVIDER EARNINGS
+
+Since real payments are not yet implemented, show a mock financial dashboard.
+
+Include:
+
+- Held in Escrow
+- Released Earnings
+- Refunds
+- Total Booking Value
+
+Transaction table:
+
+- booking
+- customer
+- date
+- gross amount
+- platform fee
+- provider amount
+- status
+
+Clearly identify this as development/demo financial data.
+
+---
+
+# 59. CUSTOMER PROFILE
+
+Include:
+
+- personal details
+- customer rank
+- loyalty progress
+- referral code
+- referral rewards
+- voucher wallet
+- booking statistics
+- reviews submitted
+
+---
+
+# 60. DATABASE DESIGN
+
+Design normalized models.
+
+At minimum consider entities equivalent to:
+
+```text
+User
+
+CustomerProfile
+
+ProviderProfile
+
+Category
+
+ServiceListing
+
+ServicePackage
+
+PortfolioItem
+
+ProviderAvailability
+
+Booking
+
+BookingItem
+
+Bundle
+
+BundleItem
+
+BundleProviderApproval
+
+Review
+
+Subscription
+
+FeaturedPlacement
+
+Badge
+
+ProviderBadge
+
+Voucher
+
+VoucherRedemption
+
+Referral
+
+Notification
+
+SupportTicket
+
+MockPayment
+
+EscrowTransaction
+
+HandshakeToken
+
+BookingEventLog
+
+Dispute
+
+PlatformSetting
+```
+
+Exact naming may differ.
+
+Maintain clear relationships.
+
+Do not store entire business objects as giant JSON blobs unless genuinely appropriate.
+
+---
+
+# 61. BOOKINGS WITH MULTIPLE PROVIDERS
+
+Architect Booking / BookingItem so the same booking system can eventually support:
+
+- single provider service
+- multiple-provider bundle
+
+A bundle booking may have:
+
+```text
+Booking
+
+BookingItem
+  Provider A
+  Photography
+
+BookingItem
+  Provider B
+  Makeup
+
+BookingItem
+  Provider C
+  Hosting
+```
+
+Do not design the database in a way that permanently assumes one booking always equals exactly one supplier.
+
+---
+
+# 62. STATUS MANAGEMENT
+
+Centralize enums/constants.
+
+Examples:
+
+```text
+UserRole
+
+BookingStatus
+
+PaymentStatus
+
+EscrowStatus
+
+ServiceStatus
+
+SubscriptionTier
+
+SubscriptionStatus
+
+BundleStatus
+
+DisputeStatus
+
+NotificationType
+
+SupportTicketStatus
+```
+
+Do not scatter arbitrary strings throughout UI code.
+
+---
+
+# 63. AUDIT / EVENT LOGGING
+
+Create a basic business-event log for actions such as:
+
+- booking created
+- provider accepted
+- provider rejected
+- payment held
+- QR check-in
+- completion verification
+- escrow release
+- dispute opened
+- admin resolution
+
+Display booking timeline from these events.
+
+This will make the platform dramatically easier to debug and demonstrate.
+
+---
+
+# 64. HOMEPAGE RECOMMENDATION LOGIC
+
+For Phase 1 implement a simple deterministic ranking system.
+
+For example:
+
+Recommended score may consider:
+
+- active paid featured placement
+- VIP priority
+- rating
+- review count
+- completion count
+- availability
+- recent activity
+
+Keep the implementation transparent and configurable.
+
+Sponsored/paid placement MUST be visibly labeled.
+
+---
+
+# 65. UI DIRECTION
+
+The UI should be:
+
+- clean
+- simple
+- professional
+- marketplace-like
+- responsive
+- mobile-friendly
+- easy to understand
+
+Do NOT spend excessive effort on visual polish during Phase 1.
+
+Functionality > visual complexity.
+
+Use:
+
+- consistent cards
+- spacing
+- typography
+- forms
+- icons
+- modals
+- tables
+- tabs
+- status chips
+- empty states
+- skeleton/load states where useful
+
+---
+
+# 66. ANIMATIONS
+
+Use lightweight animations.
+
+Examples:
+
+- card hover
+- dropdown transitions
+- modal entry
+- tab transitions
+- toast appearance
+- notification indicator
+- page section reveal
+- button loading state
+
+Avoid huge cinematic animations.
+
+The website is supposed to help someone hire a caterer, not summon an ancient deity.
+
+Respect prefers-reduced-motion where practical.
+
+---
+
+# 67. RESPONSIVENESS
+
+Test:
+
+- Desktop
+- Tablet
+- Mobile
+
+On mobile:
+
+Customer marketplace should remain usable.
+
+Provider/admin tables may become:
+
+- scrollable
+- card-based
+
+Navigation should collapse appropriately.
+
+---
+
+# 68. FORM VALIDATION
+
+Implement validation for:
+
+- required values
+- emails
+- password requirements
+- prices
+- date availability
+- package selection
+- voucher constraints
+- reviews
+- booking requests
+
+Display errors near relevant inputs.
+
+Never fail silently.
+
+---
+
+# 69. FEEDBACK STATES
+
+Every mutation should communicate:
+
+- loading
+- success
+- failure
+
+Use:
+
+- toast
+- inline message
+- modal
+
+Buttons should show loading state when appropriate.
+
+Prevent accidental double submission.
+
+---
+
+# 70. EMPTY STATES
+
+Every dashboard area should have proper empty state.
+
+Examples:
+
+"No bookings yet."
+
+"No active services."
+
+"You haven't received any reviews."
+
+"No vouchers available."
+
+Do not leave blank pages.
+
+---
+
+# 71. ERROR HANDLING
+
+Create graceful handling for:
+
+- unavailable service
+- nonexistent provider
+- invalid booking
+- expired voucher
+- already-used QR
+- wrong QR
+- permission denied
+- invalid date
+- database error
+
+Do not expose raw stack traces in UI.
+
+---
+
+# 72. SEEDED DEVELOPMENT DATA
+
+Seed enough realistic data so the marketplace immediately looks functional.
+
+Create:
+
+- 1 admin
+- at least 3 customers
+- at least 8 providers
+- every main category
+- 15+ services
+- multiple service packages
+- provider availability
+- ratings
+- reviews
+- Classic provider
+- VIP provider
+- featured provider
+- bundle
+- vouchers
+- bookings in several states
+- notifications
+
+Use plausible Philippine names/business context.
+
+Use Philippine Peso:
+
+```text
+₱
+PHP
+```
+
+Do not use real people/businesses unless explicitly provided.
+
+---
+
+# 73. EXAMPLE DEMO PROVIDERS
+
+Create fictional examples such as:
+
+- Luna Lens Photography
+- Golden Table Catering
+- Northstar Event Hosting
+- Petal & Pine Events
+- Velvet Glow Makeup
+- After Hours Mobile Bar
+- Serenade Live Performers
+- Ever After Wedding Planning
+
+These names are development placeholders.
+
+---
+
+# 74. DEMO SCENARIOS
+
+Ensure we can demonstrate:
+
+## Scenario A — Customer
+
+1. Register
+2. Receive welcome voucher
+3. Browse Photography
+4. Filter by date
+5. Open provider
+6. Select package
+7. Create booking
+8. Apply voucher
+9. Mock-pay
+10. See escrow
+11. Receive notification
+12. Manage booking
+
+## Scenario B — Provider
+
+1. Login
+2. Edit provider profile
+3. Create service
+4. Add package
+5. Block calendar date
+6. Receive booking
+7. Accept booking
+8. Perform Gate 1 verification
+9. Perform Gate 2 verification
+10. Receive mock escrow release
+
+## Scenario C — Bundle
+
+1. Admin creates bundle
+2. Adds multiple provider packages
+3. Providers approve
+4. Admin publishes
+5. Customer checks availability
+6. Customer books bundle
+7. Multiple booking items generated
+
+## Scenario D — Admin
+
+1. Login
+2. View metrics
+3. Manage provider
+4. Create voucher
+5. Create featured placement
+6. Review bundle
+7. Handle support ticket
+8. Handle dispute
+9. Release/refund mock escrow
+10. Change badge settings
+
+---
+
+# 75. PHASE 1 NON-GOALS
+
+Unless already easy/available, do NOT prioritize:
+
+- real GCash integration
+- real card payment
+- real bank transfers
+- production escrow provider
+- live SMS
+- production email
+- KYC vendor integration
+- legal identity verification
+- real tax calculation
+- advanced AI recommendations
+- complex machine learning
+- native Android/iOS app
+- live video calling
+- production accounting
+- production deployment infrastructure
+
+Represent future hooks cleanly.
+
+---
+
+# 76. PWA / "INSTALLATION" REQUIREMENT
+
+Meeting notes contain an unfinished reference to:
+
+"Installation"
+
+Do not assume what this means.
+
+If adding basic PWA/installability is trivial in the selected framework, it may be included.
+
+Otherwise document this requirement as:
+
+```text
+WIP / Requires Product Clarification
+```
+
+Do NOT delay core marketplace development because of it.
+
+---
+
+# 77. PROJECT STRUCTURE
+
+Keep code organized.
+
+Prefer something conceptually similar to:
+
+```text
+app/
+components/
+features/
+lib/
+server/
+database/
+types/
+config/
+public/
+tests/
+```
+
+Create domain-specific feature areas where helpful:
+
+```text
+auth
+marketplace
+providers
+bookings
+bundles
+payments
+escrow
+admin
+reviews
+promotions
+notifications
+support
+```
+
+Avoid dumping everything into giant component files.
+
+---
+
+# 78. SHARED COMPONENTS
+
+Build reusable components.
+
+Examples:
+
+- ServiceCard
+- ProviderCard
+- BookingCard
+- StatusBadge
+- PackageCard
+- RatingDisplay
+- MoneyDisplay
+- DatePicker
+- SearchFilters
+- VoucherInput
+- NotificationDropdown
+- ConfirmationDialog
+- DashboardSidebar
+- EmptyState
+- LoadingState
+
+Do not unnecessarily duplicate UI.
+
+---
+
+# 79. CENTRAL CONFIGURATION
+
+Create centralized configuration for:
+
+- platform name
+- currency
+- service fee
+- customer ranks
+- badge rules
+- referral defaults
+- subscription values
+- featured listing values
+
+Prefer database-backed admin settings where feasible.
+
+Use fallback defaults in code.
+
+---
+
+# 80. ACCESSIBILITY
+
+Use:
+
+- semantic elements
+- form labels
+- keyboard accessible controls
+- focus states
+- reasonable contrast
+- alt text
+
+Do not build clickable divs for everything like civilization learned nothing from HTML.
+
+---
+
+# 81. TESTING
+
+Create tests for critical business logic where feasible.
+
+Prioritize:
+
+- role authorization
+- voucher validation
+- bundle availability
+- booking status transitions
+- escrow transition
+- handshake token single-use enforcement
+- customer ranking
+- trusted badge eligibility
+- referral reward prevention
+
+Also perform route smoke testing.
+
+---
+
+# 82. BUILD VALIDATION
+
+Before declaring Phase 1 complete, run:
+
+- dependency installation
+- database migration
+- database seed
+- type checking
+- linting
+- tests
+- production build if supported
+
+Fix errors.
+
+Do not leave the project with obvious compile errors and call it complete.
+
+---
+
+# 83. DATABASE RESET
+
+Provide simple development commands for:
+
+```text
+reset database
+migrate database
+seed database
+run development server
+```
+
+Document them.
+
+---
+
+# 84. README
+
+Create/update README.md.
+
+Include:
+
+## Project
+
+What the application is.
+
+## Phase
+
+Phase 1 Functional MVP.
+
+## Installation
+
+Exact setup commands.
+
+## Environment Variables
+
+Describe them.
+
+Provide `.env.example`.
+
+Do NOT commit secrets.
+
+## Database
+
+Explain local SQLite.
+
+## Demo Accounts
+
+Customer.
+
+Provider.
+
+Administrator.
+
+## Main Features
+
+List implemented features.
+
+## Known Limitations
+
+List Phase 2 items.
+
+---
+
+# 85. PHASE STATUS DOCUMENT
+
+Create:
+
+```text
+PHASE1_STATUS.md
+```
+
+Use:
+
+```text
+✅ COMPLETE
+
+🟡 PARTIAL
+
+🔴 WIP
+```
+
+Document every major feature.
+
+Example:
+
+```text
+Authentication ✅
+
+Customer Marketplace ✅
+
+Provider Dashboard ✅
+
+Administrator Dashboard ✅
+
+Individual Booking ✅
+
+Bundles ✅
+
+QR Handshake ✅
+
+Mock Escrow ✅
+
+Real Payment Gateway 🔴
+
+Email Integration 🔴
+```
+
+---
+
+# 86. DEVELOPMENT CHANGELOG
+
+Create:
+
+```text
+CHANGELOG_PHASE1.md
+```
+
+Briefly document major additions.
+
+Do not record every tiny CSS modification.
+
+---
+
+# 87. IMPORTANT CODING RULES
+
+Do NOT:
+
+- hardcode logged-in users
+- store plain passwords
+- fake role security only in frontend
+- create important buttons with no handler
+- create static dashboards with fake fixed numbers when database values are available
+- create fake reviews disconnected from database
+- permit reviewing incomplete bookings
+- permit used QR tokens to work again
+- permit expired vouchers
+- permit providers to access another provider's private dashboard
+- permit customers to access another customer's bookings
+
+---
+
+# 88. DATA OWNERSHIP
+
+Always verify ownership server-side.
+
+Examples:
+
+A provider may edit:
+
+their own services.
+
+Not:
+
+another provider's services.
+
+A customer may see:
+
+their own private bookings.
+
+Not:
+
+another customer's private booking details.
+
+Admin has platform-wide authority according to role.
+
+---
+
+# 89. PLATFORM FEE
+
+Create support for a configurable platform/service fee.
+
+Example:
+
+```text
+Booking:
+₱10,000
+
+Platform fee:
+₱500
+
+Provider amount:
+₱9,500
+```
+
+This can use seeded/configured percentages.
+
+Do not imply this is final business pricing.
+
+Make it adjustable.
+
+---
+
+# 90. CANCELLATION
+
+Add basic cancellation.
+
+Customer/provider may request cancellation depending on booking stage.
+
+Record:
+
+- actor
+- reason
+- timestamp
+
+Admin may review cancellation involving held mock escrow.
+
+Phase 1 cancellation policies can be simple.
+
+Make policy values configurable where possible.
+
+---
+
+# 91. BOOKING TIMELINE
+
+Every booking should show human-readable history:
+
+```text
+Booking submitted
+Provider accepted
+Payment placed in escrow
+Booking confirmed
+Service check-in verified
+Service completed
+Escrow released
+Review submitted
+```
+
+Derive from event records.
+
+---
+
+# 92. ADMIN SETTINGS
+
+Create a basic settings interface for administrator.
+
+Allow editing development values such as:
+
+- platform fee
+- Trusted minimum rating
+- Trusted minimum jobs
+- Best Service minimum rating
+- first-time voucher
+- referral reward
+- Silver threshold
+- Gold threshold
+- Platinum threshold
+- Featured placement prices
+
+Persist settings.
+
+---
+
+# 93. ANALYTICS
+
+Do not over-engineer.
+
+Create useful local dashboard analytics.
+
+Customer:
+
+- completed bookings
+- spending
+- rank progress
+
+Provider:
+
+- booking count
+- rating
+- revenue
+- pending escrow
+- completed events
+
+Admin:
+
+- users
+- providers
+- bookings
+- transaction volume
+- disputes
+- promotions
+- VIP count
+
+---
+
+# 94. MOCK CHECKOUT
+
+Create a checkout page.
+
+Display:
+
+- provider
+- service
+- package
+- event date
+- subtotal
+- voucher
+- discount
+- platform/service fee if customer-facing
+- final total
+
+Payment method:
+
+```text
+Development Mock Payment
+```
+
+Button:
+
+```text
+Pay & Reserve
+```
+
+Require confirmation.
+
+Then create escrow/payment records.
+
+---
+
+# 95. PROVIDER ONBOARDING
+
+Provider onboarding after registration:
+
+Step 1:
+Business information
+
+Step 2:
+Service categories
+
+Step 3:
+First service
+
+Step 4:
+Packages
+
+Step 5:
+Availability
+
+Step 6:
+Profile preview
+
+Allow skip where reasonable but indicate incomplete profile.
+
+Display profile completeness percentage.
+
+---
+
+# 96. USER EXPERIENCE PRIORITY
+
+Prioritize the following order:
+
+1. Application runs.
+2. Authentication works.
+3. Database persists.
+4. Role permissions work.
+5. Marketplace browsing works.
+6. Provider profile works.
+7. Booking works.
+8. Dashboards work.
+9. Bundles work.
+10. Admin functionality works.
+11. Escrow works.
+12. QR handshake works.
+13. Vouchers/ranks/referrals work.
+14. Notifications/support work.
+15. Visual polish.
+
+Never sacrifice the first five for fancy animations.
+
+---
+
+# 97. IMPLEMENTATION ORDER
+
+Work through development incrementally.
+
+## STEP 1
+
+Audit repository.
+
+## STEP 2
+
+Establish application/database architecture.
+
+## STEP 3
+
+Create database schema and seed system.
+
+## STEP 4
+
+Authentication and authorization.
+
+## STEP 5
+
+Base layouts and role navigation.
+
+## STEP 6
+
+Provider/service system.
+
+## STEP 7
+
+Marketplace browsing and search.
+
+## STEP 8
+
+Availability.
+
+## STEP 9
+
+Bookings.
+
+## STEP 10
+
+Mock checkout/escrow.
+
+## STEP 11
+
+Provider booking flow.
+
+## STEP 12
+
+QR handshake.
+
+## STEP 13
+
+Reviews.
+
+## STEP 14
+
+Bundles.
+
+## STEP 15
+
+Subscriptions and promotions.
+
+## STEP 16
+
+Ranks/vouchers/referrals.
+
+## STEP 17
+
+Notifications/support chatbot.
+
+## STEP 18
+
+Administrator tools.
+
+## STEP 19
+
+Testing.
+
+## STEP 20
+
+Documentation and final validation.
+
+Do not merely output this plan.
+
+Execute it.
+
+---
+
+# 98. AFTER EACH MAJOR SECTION
+
+After each major development phase:
+
+- run type check
+- inspect errors
+- fix broken imports
+- verify routes
+- verify database usage
+- continue
+
+Do not wait until the entire application is finished to discover one early schema change broke everything.
+
+---
+
+# 99. DESIGN CONSISTENCY
+
+Create a small design system.
+
+Standardize:
+
+- spacing
+- border radius
+- typography
+- buttons
+- inputs
+- cards
+- status colors
+- tables
+- modal structure
+
+Do not spend excessive time creating a massive design-token system.
+
+Phase 1 needs consistency, not an art dissertation.
+
+---
+
+# 100. PLACEHOLDER DATA RULE
+
+Placeholder content is acceptable for:
+
+- provider images
+- promotional banners
+- FAQ text
+- seeded descriptions
+
+Placeholder functionality is NOT acceptable for:
+
+- registration
+- login
+- role navigation
+- service creation
+- booking
+- booking status
+- availability
+- voucher validation
+- reviews
+- admin management
+- QR verification
+- mock escrow
+
+Those must actually work.
+
+---
+
+# 101. PHASE 1 COMPLETION CRITERIA
+
+Phase 1 is considered successfully implemented when:
+
+### Authentication
+
+- Customer can register.
+- Provider can register.
+- All roles can login.
+- Login persists.
+- Logout works.
+- Protected routes work.
+
+### Customer
+
+- Can browse.
+- Can search.
+- Can filter.
+- Can inspect providers.
+- Can inspect packages.
+- Can choose event date.
+- Can create booking.
+- Can apply voucher.
+- Can mock-pay.
+- Can inspect booking.
+- Can receive notifications.
+- Can review completed booking.
+
+### Provider
+
+- Can edit profile.
+- Can create service.
+- Can create package.
+- Can manage availability.
+- Can receive booking.
+- Can accept/reject booking.
+- Can perform Gate 1.
+- Can perform Gate 2.
+- Can inspect mock earnings.
+- Can participate in bundles.
+
+### Admin
+
+- Can see dashboard.
+- Can manage users.
+- Can manage providers.
+- Can manage categories.
+- Can manage vouchers.
+- Can manage bundles.
+- Can manage featured placement.
+- Can manage subscriptions.
+- Can manage badge policies.
+- Can manage disputes.
+- Can manage support tickets.
+- Can manage escrow.
+
+### Marketplace Systems
+
+- Reviews affect provider rating.
+- Completed bookings influence customer rank.
+- VIP affects recommended ranking.
+- Featured placement appears in intended positions.
+- Bundle availability uses all participant schedules.
+- Escrow is released only after intended workflow.
+- Verification token cannot be reused.
+
+---
+
+# 102. FINAL REVIEW
+
+Before finishing:
+
+Personally walk through the application as:
+
+### Customer
+
+### Provider
+
+### Administrator
+
+Identify obvious dead ends.
+
+Fix them.
+
+Check navigation.
+
+Check database persistence.
+
+Check role access.
+
+Check responsive layout.
+
+Check important button behavior.
+
+Check empty states.
+
+Check demo data.
+
+---
+
+# 103. FINAL RESPONSE AFTER IMPLEMENTATION
+
+When you have completed as much Phase 1 as the environment permits, report:
+
+```text
+PHASE 1 IMPLEMENTATION REPORT
+
+1. Implemented Features
+2. Partially Implemented Features
+3. WIP / Phase 2 Features
+4. Database Architecture
+5. Main Routes
+6. Demo Accounts
+7. How to Run
+8. How to Reset/Seed Database
+9. Tests Performed
+10. Known Issues
+11. Recommended Next Steps
+```
+
+Do not claim functionality you did not actually implement.
+
+---
+
+# 104. PRODUCT PHILOSOPHY
+
+The final Phase 1 application should demonstrate this full lifecycle:
+
+```text
+Provider joins platform
+        ↓
+Creates services/packages
+        ↓
+Publishes availability
+        ↓
+Customer discovers provider
+        ↓
+Customer selects date/package
+        ↓
+Customer books
+        ↓
+Provider accepts
+        ↓
+Customer mock-pays
+        ↓
+Money held in mock escrow
+        ↓
+Event happens
+        ↓
+Gate 1 digital handshake
+        ↓
+Service performed
+        ↓
+Gate 2 digital handshake
+        ↓
+Booking completed
+        ↓
+Escrow released
+        ↓
+Customer reviews provider
+        ↓
+Ratings/badges/ranks update
+```
+
+And separately:
+
+```text
+Admin
+ ↓
+Supervises marketplace
+ ↓
+Curates bundles
+ ↓
+Manages providers
+ ↓
+Handles disputes
+ ↓
+Controls promotions
+ ↓
+Controls vouchers
+ ↓
+Controls platform rules
+```
+
+That lifecycle is the heart of Phase 1.
+
+Build the system around it.
+
+---
+
+# 105. BEGIN
+
+Start by inspecting the repository.
+
+Then immediately begin implementation.
+
+Do not stop after presenting a plan unless an unrecoverable environment issue prevents coding.
+
+When multiple implementation options exist, choose the simplest maintainable solution that preserves future extensibility.
+
+If a non-critical product detail is ambiguous, make a sensible Phase 1 assumption, document it in `PHASE1_STATUS.md`, and continue rather than blocking development.
+
+The goal is a **working end-to-end startup prototype**, not theoretical perfection.
