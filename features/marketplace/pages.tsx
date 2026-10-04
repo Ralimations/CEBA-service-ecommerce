@@ -1,87 +1,46 @@
+import { flatMapAsync } from '@/lib/async';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import {
-  ArrowRight,
-  ArrowUpRight,
-  Search,
-  CalendarDays,
-  MapPin,
-  ShieldCheck,
-  Sparkles,
-  Camera,
-  Utensils,
-  Mic,
-  Flower2,
-  Brush,
-  Wine,
-  Music2,
-  Heart,
-  Building2,
-  Check,
-  Layers,
-  SlidersHorizontal,
-} from 'lucide-react';
-import {
-  services,
-  service,
-  provider,
-  packagesFor,
-  bundles,
-  searchBundles,
-  reviews,
-  available,
-  type Search as Filters,
-} from '@/server/queries';
+import { ArrowRight, ArrowUpRight, Search, CalendarDays, MapPin, ShieldCheck, Sparkles, Camera, Utensils, Mic, Flower2, Brush, Wine, Music2, Heart, Building2, Check, Layers, SlidersHorizontal, } from 'lucide-react';
+import { services, service, provider, packagesFor, bundles, searchBundles, reviews, available, type Search as Filters, } from '@/server/queries';
 import { all, settings } from '@/server/db';
 import { activeCategories } from '@/server/auth';
 import type { User } from '@/lib/domain';
 import { ServiceCard, BundleCard, ProviderMini } from '@/components/cards';
-import {
-  Badge,
-  Rating,
-  Price,
-  Heading,
-  SectionHeading,
-  Empty,
-  Panel,
-  Field,
-  Inclusions,
-  TrustNote,
-} from '@/components/ui';
+import { Badge, Rating, Price, Heading, SectionHeading, Empty, Panel, Field, Inclusions, TrustNote, } from '@/components/ui';
 import { BookingForm } from './booking-form';
 import { dateLabel, today } from '@/lib/format';
 const icons: Record<string, typeof Camera> = {
-  Camera,
-  Utensils,
-  Mic,
-  Flower2,
-  Brush,
-  Wine,
-  Music2,
-  Heart,
-  Building2,
-  Sparkles,
+    Camera,
+    Utensils,
+    Mic,
+    Flower2,
+    Brush,
+    Wine,
+    Music2,
+    Heart,
+    Building2,
+    Sparkles,
 };
-export function Home({ date }: { date?: string }) {
-  const picks = services({ placement: 'HOMEPAGE' })
-    .filter((s, i, list) => list.findIndex((x) => x.provider_id === s.provider_id) === i)
-    .slice(0, 4);
-  const top = services({ sort: 'rating', placement: 'ORGANIC' })
-    .filter((s, i, list) => list.findIndex((x) => x.provider_id === s.provider_id) === i)
-    .slice(0, 4);
-  return (
-    <>
+export async function Home({ date }: {
+    date?: string;
+}) {
+    const picks = (await services({ placement: 'HOMEPAGE' })).filter((s, i, list) => list.findIndex((x) => x.provider_id === s.provider_id) === i)
+        .slice(0, 4);
+    const top = (await services({ sort: 'rating', placement: 'ORGANIC' })).filter((s, i, list) => list.findIndex((x) => x.provider_id === s.provider_id) === i)
+        .slice(0, 4);
+    return (<>
       <div className="promo-strip">
-        <Sparkles size={13} />A little welcome for your first celebration.{' '}
+        <Sparkles size={13}/>A little welcome for your first celebration.{' '}
         <Link href="/vouchers">
-          Get {settings().welcomePercent}% off with WELCOME10 <ArrowRight size={13} />
+          Get {(await settings()).welcomePercent}% off with WELCOME10 <ArrowRight size={13}/>
         </Link>
       </div>
       <main className="home-main">
         <section className="hero">
           <div className="hero-copy">
             <span className="eyebrow">
-              <span className="tiny-dot" />
+              <span className="tiny-dot"/>
               GOOD PEOPLE. GREAT CELEBRATIONS.
             </span>
             <h1>
@@ -93,7 +52,7 @@ export function Home({ date }: { date?: string }) {
             </h1>
             <p>
               Find the people who bring your celebration to life.
-              <br className="desktop-only" />
+              <br className="desktop-only"/>
               Thoughtful services, for whatever you’re celebrating.
             </p>
             <div className="hero-proof">
@@ -109,22 +68,18 @@ export function Home({ date }: { date?: string }) {
             </div>
           </div>
           <div className="hero-visual">
-            <img
-              src="/images/hero.jpg"
-              alt="An intimate outdoor celebration with a beautifully set table"
-              fetchPriority="high"
-            />
+            <img src="/images/hero.jpg" alt="An intimate outdoor celebration with a beautifully set table" fetchPriority="high"/>
             <span className="hero-caption">FOR THE MOMENTS THAT MATTER.</span>
             <div className="hero-floating">
               <span className="floating-icon">
-                <ShieldCheck size={25} />
+                <ShieldCheck size={25}/>
               </span>
               <div>
                 <strong>Less planning stress.</strong>
                 <span>More being in the moment.</span>
               </div>
               <span className="floating-check">
-                <Check size={15} />
+                <Check size={15}/>
               </span>
             </div>
             <div className="hero-scribble">
@@ -136,17 +91,17 @@ export function Home({ date }: { date?: string }) {
         </section>
         <form className="hero-search" action="/browse">
           <label>
-            <Search size={20} />
+            <Search size={20}/>
             <span>
               <small>WHAT ARE YOU PLANNING?</small>
-              <input name="q" placeholder="Photography, catering, a little magic…" />
+              <input name="q" placeholder="Photography, catering, a little magic…"/>
             </span>
           </label>
           <label>
-            <CalendarDays size={20} />
+            <CalendarDays size={20}/>
             <span>
               <small>WHEN’S THE CELEBRATION?</small>
-              <input type="date" name="date" min={today()} aria-label="Event date" />
+              <input type="date" name="date" min={today()} aria-label="Event date"/>
             </span>
           </label>
           <label>
@@ -162,56 +117,34 @@ export function Home({ date }: { date?: string }) {
           </label>
           <button className="btn" type="submit">
             Find your people
-            <Search size={17} />
+            <Search size={17}/>
           </button>
         </form>
-        {date && (
-          <section className="home-section">
-            <SectionHeading
-              title={`Available for ${dateLabel(date)}`}
-              description="Teams with room for your chosen celebration date."
-              href={`/browse?date=${date}&available=1`}
-            />
+        {date && (<section className="home-section">
+            <SectionHeading title={`Available for ${dateLabel(date)}`} description="Teams with room for your chosen celebration date." href={`/browse?date=${date}&available=1`}/>
             <div className="service-grid">
-              {services({ date, available: '1' })
-                .slice(0, 4)
-                .map((s) => (
-                  <ServiceCard key={s.id} service={s} date={date} />
-                ))}
+              {(await services({ date, available: '1' })).slice(0, 4)
+                .map((s) => (<ServiceCard key={s.id} service={s} date={date}/>))}
             </div>
-          </section>
-        )}
+          </section>)}
         <section className="home-section categories-section">
-          <SectionHeading
-            title="Every detail, covered."
-            description="Start with what you need. We’ll help you find your people."
-            href="/browse"
-            label="Explore all services"
-          />
+          <SectionHeading title="Every detail, covered." description="Start with what you need. We’ll help you find your people." href="/browse" label="Explore all services"/>
           <div className="category-grid">
-            {activeCategories().map((c) => {
-              const Icon = icons[c.icon] || Sparkles;
-              return (
-                <Link href={`/browse?category=${c.id}`} key={c.id}>
+            {(await activeCategories()).map((c) => {
+            const Icon = icons[c.icon] || Sparkles;
+            return (<Link href={`/browse?category=${c.id}`} key={c.id}>
                   <span className={`category-icon ${c.id}`}>
-                    <Icon size={25} strokeWidth={1.5} />
+                    <Icon size={25} strokeWidth={1.5}/>
                   </span>
                   <span>{c.name}</span>
-                </Link>
-              );
-            })}
+                </Link>);
+        })}
           </div>
         </section>
         <section className="home-section">
-          <SectionHeading
-            title="Good people. Beautiful work."
-            description="Discover a few of the teams making celebrations feel special."
-            href="/browse"
-          />
+          <SectionHeading title="Good people. Beautiful work." description="Discover a few of the teams making celebrations feel special." href="/browse"/>
           <div className="service-grid">
-            {picks.map((s) => (
-              <ServiceCard key={s.id} service={s} />
-            ))}
+            {picks.map((s) => (<ServiceCard key={s.id} service={s}/>))}
           </div>
           <p className="subtle-note">
             Sponsored placements are paid visibility. Ratings come from completed demo bookings.
@@ -231,32 +164,22 @@ export function Home({ date }: { date?: string }) {
             </p>
             <Link href="/bundles" className="btn secondary">
               Explore curated bundles
-              <ArrowUpRight size={17} />
+              <ArrowUpRight size={17}/>
             </Link>
             <span className="bundle-line">
-              <Layers size={18} />
+              <Layers size={18}/>
               Multiple suppliers. One simple booking.
             </span>
           </div>
           <div className="home-bundle">
-            {bundles()
-              .slice(0, 1)
-              .map((b) => (
-                <BundleCard key={b.id} bundle={b} />
-              ))}
+            {(await bundles()).slice(0, 1)
+            .map((b) => (<BundleCard key={b.id} bundle={b}/>))}
           </div>
         </section>
         <section className="home-section">
-          <SectionHeading
-            title="Loved for the little things."
-            description="Highly rated teams, chosen by the people they’ve celebrated with."
-            href="/browse?sort=rating"
-            label="Meet the top-rated teams"
-          />
+          <SectionHeading title="Loved for the little things." description="Highly rated teams, chosen by the people they’ve celebrated with." href="/browse?sort=rating" label="Meet the top-rated teams"/>
           <div className="service-grid">
-            {top.map((s) => (
-              <ServiceCard key={s.id} service={s} />
-            ))}
+            {top.map((s) => (<ServiceCard key={s.id} service={s}/>))}
           </div>
         </section>
         <section className="how-section">
@@ -264,28 +187,26 @@ export function Home({ date }: { date?: string }) {
           <h2>A little simpler, from the start.</h2>
           <div className="three-grid">
             {[
-              [
+            [
                 '01',
                 'Find your people',
                 'Explore services, compare packages, and find a team that feels right.',
-              ],
-              [
+            ],
+            [
                 '02',
                 'Make it official',
                 'Send your request. Once accepted, reserve your date with simulated escrow.',
-              ],
-              [
+            ],
+            [
                 '03',
                 'Enjoy your moment',
                 'Verify service start and completion together, then share a little love in a review.',
-              ],
-            ].map(([n, t, d]) => (
-              <div key={n}>
+            ],
+        ].map(([n, t, d]) => (<div key={n}>
                 <span className="step-number">{n}</span>
                 <h3>{t}</h3>
                 <p>{d}</p>
-              </div>
-            ))}
+              </div>))}
           </div>
         </section>
         <section className="provider-banner">
@@ -299,35 +220,28 @@ export function Home({ date }: { date?: string }) {
           </div>
           <Link href="/register?role=PROVIDER" className="btn">
             Join as a provider
-            <ArrowUpRight size={18} />
+            <ArrowUpRight size={18}/>
           </Link>
         </section>
       </main>
-    </>
-  );
+    </>);
 }
-export function Browse({ search }: { search: Filters & { type?: string } }) {
-  const results = services(search);
-  const bundleResults = search.type === 'bundles' ? searchBundles(search) : [];
-  const resultCount = search.type === 'bundles' ? bundleResults.length : results.length;
-  const categories = activeCategories();
-  return (
-    <main className="container page-space">
-      <Heading
-        eyebrow="YOUR CELEBRATION STARTS HERE"
-        title="Find your kind of wonderful."
-        description="Thoughtful people and services for every moment worth celebrating."
-      />
+export async function Browse({ search }: {
+    search: Filters & {
+        type?: string;
+    };
+}) {
+    const results = (await services(search));
+    const bundleResults = search.type === 'bundles' ? (await searchBundles(search)) : [];
+    const resultCount = search.type === 'bundles' ? bundleResults.length : results.length;
+    const categories = (await activeCategories());
+    return (<main className="container page-space">
+      <Heading eyebrow="YOUR CELEBRATION STARTS HERE" title="Find your kind of wonderful." description="Thoughtful people and services for every moment worth celebrating."/>
       <form action="/browse" className="browse-search">
-        <Search size={20} />
-        <input
-          name="q"
-          defaultValue={search.q}
-          placeholder="Search services, providers, or a little inspiration…"
-          aria-label="Search services"
-        />
-        {search.category && <input type="hidden" name="category" value={search.category} />}
-        {search.type && <input type="hidden" name="type" value={search.type} />}
+        <Search size={20}/>
+        <input name="q" defaultValue={search.q} placeholder="Search services, providers, or a little inspiration…" aria-label="Search services"/>
+        {search.category && <input type="hidden" name="category" value={search.category}/>}
+        {search.type && <input type="hidden" name="type" value={search.type}/>}
         <button className="btn" type="submit">
           Search
         </button>
@@ -335,11 +249,11 @@ export function Browse({ search }: { search: Filters & { type?: string } }) {
       <div className="browse-layout">
         <aside className="filters">
           <h3>
-            <SlidersHorizontal size={17} />
+            <SlidersHorizontal size={17}/>
             Make it yours
           </h3>
           <form action="/browse">
-            <input type="hidden" name="q" value={search.q || ''} />
+            <input type="hidden" name="q" value={search.q || ''}/>
             <Field label="Booking type">
               <select name="type" defaultValue={search.type || 'services'}>
                 <option value="services">Individual services</option>
@@ -349,28 +263,20 @@ export function Browse({ search }: { search: Filters & { type?: string } }) {
             <Field label="Service category">
               <select name="category" defaultValue={search.category || ''}>
                 <option value="">All services</option>
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id}>
+                {categories.map((c) => (<option key={c.id} value={c.id}>
                     {c.name}
-                  </option>
-                ))}
+                  </option>))}
               </select>
             </Field>
             <Field label="Event date">
-              <input name="date" type="date" min={today()} defaultValue={search.date} />
+              <input name="date" type="date" min={today()} defaultValue={search.date}/>
             </Field>
             <div className="two-grid">
               <Field label="Min budget (₱)">
-                <input name="min" type="number" min={0} defaultValue={search.min} placeholder="0" />
+                <input name="min" type="number" min={0} defaultValue={search.min} placeholder="0"/>
               </Field>
               <Field label="Max budget (₱)">
-                <input
-                  name="max"
-                  type="number"
-                  min={0}
-                  defaultValue={search.max}
-                  placeholder="Any"
-                />
+                <input name="max" type="number" min={0} defaultValue={search.max} placeholder="Any"/>
               </Field>
             </div>
             <Field label="Minimum rating">
@@ -391,20 +297,15 @@ export function Browse({ search }: { search: Filters & { type?: string } }) {
               </select>
             </Field>
             <label className="check-label">
-              <input
-                type="checkbox"
-                name="available"
-                value="1"
-                defaultChecked={!!search.available}
-              />
+              <input type="checkbox" name="available" value="1" defaultChecked={!!search.available}/>
               Available on my date
             </label>
             <label className="check-label">
-              <input type="checkbox" name="trusted" value="1" defaultChecked={!!search.trusted} />
+              <input type="checkbox" name="trusted" value="1" defaultChecked={!!search.trusted}/>
               Trusted providers
             </label>
             <label className="check-label">
-              <input type="checkbox" name="vip" value="1" defaultChecked={!!search.vip} />
+              <input type="checkbox" name="vip" value="1" defaultChecked={!!search.vip}/>
               VIP plan providers
             </label>
             <button type="submit" className="btn full">
@@ -414,11 +315,8 @@ export function Browse({ search }: { search: Filters & { type?: string } }) {
               Clear filters
             </Link>
           </form>
-          <Link
-            className="filter-bundle-link"
-            href={`/bundles${search.date ? `?date=${search.date}` : ''}`}
-          >
-            <Layers size={20} />
+          <Link className="filter-bundle-link" href={`/bundles${search.date ? `?date=${search.date}` : ''}`}>
+            <Layers size={20}/>
             <span>
               Looking for a whole team?<strong>Explore bundles →</strong>
             </span>
@@ -433,45 +331,28 @@ export function Browse({ search }: { search: Filters & { type?: string } }) {
             </p>
             <Badge>Metro Manila & beyond</Badge>
           </div>
-          {resultCount ? (
-            search.type === 'bundles' ? (
-              <div className="bundle-grid">
-                {bundleResults.map((b) => (
-                  <BundleCard key={b.id} bundle={b} date={search.date} />
-                ))}
-              </div>
-            ) : (
-              <div className="service-grid browse-grid">
-                {results.map((s) => (
-                  <ServiceCard key={s.id} service={s} date={search.date} />
-                ))}
-              </div>
-            )
-          ) : (
-            <Empty title="A little room to explore.">
+          {resultCount ? (search.type === 'bundles' ? (<div className="bundle-grid">
+                {bundleResults.map((b) => (<BundleCard key={b.id} bundle={b} date={search.date}/>))}
+              </div>) : (<div className="service-grid browse-grid">
+                {results.map((s) => (<ServiceCard key={s.id} service={s} date={search.date}/>))}
+              </div>)) : (<Empty title="A little room to explore.">
               No services match these filters. Try a different date, budget, or category.
-            </Empty>
-          )}
+            </Empty>)}
         </section>
       </div>
-    </main>
-  );
+    </main>);
 }
-export function ServiceDetail({
-  serviceId,
-  date,
-  user,
-}: {
-  serviceId: string;
-  date?: string;
-  user: User | null;
+export async function ServiceDetail({ serviceId, date, user, }: {
+    serviceId: string;
+    date?: string;
+    user: User | null;
 }) {
-  const s = service(serviceId);
-  if (!s) notFound();
-  const p = provider(s.provider_id)!;
-  const packs = packagesFor(s.id);
-  return (
-    <main className="container page-space">
+    const s = (await service(serviceId));
+    if (!s)
+        notFound();
+    const p = (await provider(s.provider_id))!;
+    const packs = (await packagesFor(s.id));
+    return (<main className="container page-space">
       <div className="breadcrumbs">
         <Link href="/browse">Explore services</Link>
         <span>/</span>
@@ -484,27 +365,27 @@ export function ServiceDetail({
           <span className="eyebrow">{s.category_name}</span>
           <h1>{s.title}</h1>
           <div className="row wrap">
-            <Rating value={s.rating} count={s.review_count} />
+            <Rating value={s.rating} count={s.review_count}/>
             <span className="muted">
-              <MapPin size={14} />
+              <MapPin size={14}/>
               {p.area}
             </span>
             {p.trusted && <Badge tone="green">Trusted provider</Badge>}
             {p.best && <Badge tone="amber">Best Service</Badge>}
           </div>
         </div>
-        <Price value={s.base_price} from />
+        <Price value={s.base_price} from/>
       </div>
-      <img className="detail-cover" src={s.image} alt={s.title} />
+      <img className="detail-cover" src={s.image} alt={s.title}/>
       <div className="detail-layout">
         <div>
-          <ProviderMini provider={p} />
+          <ProviderMini provider={p}/>
           <section className="detail-section">
             <h2>A little about the experience</h2>
             <p className="pre-line">{s.description}</p>
             <div className="detail-facts">
               <span>
-                <CalendarDays size={18} />
+                <CalendarDays size={18}/>
                 {s.duration}
               </span>
               <span>
@@ -516,116 +397,99 @@ export function ServiceDetail({
           <section className="detail-section" id="packages">
             <h2>Choose your kind of celebration</h2>
             <div className="package-grid">
-              {packs.map((pack, i) => (
-                <Panel key={pack.id} className={i === 1 ? 'package highlighted' : 'package'}>
+              {packs.map((pack, i) => (<Panel key={pack.id} className={i === 1 ? 'package highlighted' : 'package'}>
                   {i === 1 && <Badge tone="green">A little extra</Badge>}
                   <h3>{pack.name}</h3>
-                  <Price value={pack.price} />
+                  <Price value={pack.price}/>
                   <p>{pack.description}</p>
-                  <Inclusions text={pack.inclusions} />
+                  <Inclusions text={pack.inclusions}/>
                   <small>{pack.duration}</small>
-                  {pack.exclusions && (
-                    <p>
+                  {pack.exclusions && (<p>
                       <strong>Not included:</strong> {pack.exclusions}
-                    </p>
-                  )}
+                    </p>)}
                   <details>
                     <summary>Package terms</summary>
                     <p>{pack.terms}</p>
                   </details>
                   <a href="#booking" className="text-link">
                     Choose your package
-                    <ArrowRight size={15} />
+                    <ArrowRight size={15}/>
                   </a>
-                </Panel>
-              ))}
+                </Panel>))}
             </div>
           </section>
-          <ReviewSection providerId={p.id} />
+          <ReviewSection providerId={p.id}/>
         </div>
         <aside id="booking">
-          <BookingForm
-            user={user}
-            service={s}
-            packages={packs}
-            addons={all<{ id: string; name: string; price: number }>(
-              'SELECT * FROM addons WHERE service_id=? AND active=1',
-              s.id,
-            )}
-            date={date}
-          />
+          <BookingForm user={user} service={s} packages={packs} addons={(await all<{
+            id: string;
+            name: string;
+            price: number;
+        }>('SELECT * FROM addons WHERE service_id=? AND active=1', s.id))} date={date}/>
           <TrustNote />
         </aside>
       </div>
-    </main>
-  );
+    </main>);
 }
-export function ReviewSection({ providerId }: { providerId: string }) {
-  const list = reviews(providerId);
-  return (
-    <section className="detail-section" id="reviews">
-      <SectionHeading
-        title="Kind words, real experiences."
-        description="Reviews from completed development bookings."
-      />
-      {list.length ? (
-        list.slice(0, 12).map((r) => (
-          <article className="review" key={r.id}>
+export async function ReviewSection({ providerId }: {
+    providerId: string;
+}) {
+    const list = (await reviews(providerId));
+    return (<section className="detail-section" id="reviews">
+      <SectionHeading title="Kind words, real experiences." description="Reviews from completed development bookings."/>
+      {list.length ? (list.slice(0, 12).map((r) => (<article className="review" key={r.id}>
             <div className="row between">
               <div className="row">
                 <span className="avatar small">{r.customer_name[0]}</span>
                 <strong>{r.customer_name}</strong>
                 <Badge tone="green">Verified booking</Badge>
               </div>
-              <Rating value={r.rating} />
+              <Rating value={r.rating}/>
             </div>
             <p>{r.body}</p>
             <small>
               {r.service_title} · {dateLabel(r.created_at)}
             </small>
-          </article>
-        ))
-      ) : (
-        <Empty title="The first kind word could be yours.">
+          </article>))) : (<Empty title="The first kind word could be yours.">
           Reviews appear after completed bookings.
-        </Empty>
-      )}
-    </section>
-  );
+        </Empty>)}
+    </section>);
 }
-export function ProviderDetail({ providerId, date }: { providerId: string; date?: string }) {
-  const p = provider(providerId);
-  if (!p || p.status !== 'ACTIVE') notFound();
-  const listing = services({ date }).filter((s) => s.provider_id === p.id);
-  const portfolio = all<{ id: string; image: string; caption: string }>(
-    'SELECT * FROM portfolio WHERE provider_id=?',
-    p.id,
-  );
-  const dates = all<{ date: string; status: string; note: string }>(
-    'SELECT date,status,note FROM availability WHERE provider_id=? AND date>=? ORDER BY date LIMIT 12',
-    p.id,
-    today(),
-  );
-  const booked = all<{ date: string }>(
-    'SELECT date FROM reservations WHERE provider_id=? AND date>=? ORDER BY date LIMIT 12',
-    p.id,
-    today(),
-  );
-  return (
-    <main className="container page-space">
-      <img className="profile-cover" src={p.cover} alt={`${p.business_name} portfolio cover`} />
+export async function ProviderDetail({ providerId, date }: {
+    providerId: string;
+    date?: string;
+}) {
+    const p = (await provider(providerId));
+    if (!p || p.status !== 'ACTIVE')
+        notFound();
+    const listing = (await services({ date })).filter((s) => s.provider_id === p.id);
+    const portfolio = (await all<{
+        id: string;
+        image: string;
+        caption: string;
+    }>('SELECT * FROM portfolio WHERE provider_id=?', p.id));
+    const dates = (await all<{
+        date: string;
+        status: string;
+        note: string;
+    }>('SELECT date,status,note FROM availability WHERE provider_id=? AND date>=? ORDER BY date LIMIT 12', p.id, today()));
+    const booked = (await all<{
+        date: string;
+    }>('SELECT date FROM reservations WHERE provider_id=? AND date>=? ORDER BY date LIMIT 12', p.id, today()));
+    return (<main className="container page-space">
+      <img className="profile-cover" src={p.cover} alt={`${p.business_name} portfolio cover`}/>
       <div className="provider-profile-head">
         <span className="avatar huge">
-          {p.avatar ? <img src={p.avatar} alt="Provider logo" /> : p.business_name[0]}
+          {p.avatar ? <img src={p.avatar} alt="Provider logo"/> : p.business_name[0]}
         </span>
         <div>
           <h1>{p.business_name}</h1>
           <p>
-            <MapPin size={16} />
+            <MapPin size={16}/>
             {p.area}
           </p>
           <div className="row wrap">
-            <Rating value={p.rating} count={p.review_count} />
+            <Rating value={p.rating} count={p.review_count}/>
             {p.trusted && <Badge tone="green">Trusted provider</Badge>}
             {p.best && <Badge tone="amber">Best Service</Badge>}
             {!!p.verified && <Badge>Profile reviewed</Badge>}
@@ -634,15 +498,13 @@ export function ProviderDetail({ providerId, date }: { providerId: string; date?
         </div>
         <a href="#services" className="btn">
           Find your package
-          <ArrowUpRight size={17} />
+          <ArrowUpRight size={17}/>
         </a>
       </div>
       <nav className="tabs" aria-label="Provider sections">
-        {['Overview', 'Services', 'Packages', 'Portfolio', 'Reviews', 'Availability'].map((t) => (
-          <a key={t} href={`#${t.toLowerCase()}`}>
+        {['Overview', 'Services', 'Packages', 'Portfolio', 'Reviews', 'Availability'].map((t) => (<a key={t} href={`#${t.toLowerCase()}`}>
             {t}
-          </a>
-        ))}
+          </a>))}
       </nav>
       <section className="detail-section" id="overview">
         <div className="two-grid">
@@ -669,152 +531,116 @@ export function ProviderDetail({ providerId, date }: { providerId: string; date?
         </div>
       </section>
       <section id="services" className="detail-section">
-        <SectionHeading title="Made for your moments" />
+        <SectionHeading title="Made for your moments"/>
         <div className="service-grid">
-          {listing.map((s) => (
-            <ServiceCard key={s.id} service={s} date={date} />
-          ))}
+          {listing.map((s) => (<ServiceCard key={s.id} service={s} date={date}/>))}
         </div>
       </section>
       <section id="packages" className="detail-section">
-        <SectionHeading title="A package for your plans" />
+        <SectionHeading title="A package for your plans"/>
         <div className="three-grid">
-          {listing.flatMap((s) =>
-            packagesFor(s.id).map((k) => (
-              <Panel key={k.id}>
+          {(await flatMapAsync(listing, async (s) => (await packagesFor(s.id)).map((k) => (<Panel key={k.id}>
                 <small>{s.title}</small>
                 <h3>{k.name}</h3>
-                <Price value={k.price} />
-                <Inclusions text={k.inclusions} />
+                <Price value={k.price}/>
+                <Inclusions text={k.inclusions}/>
                 <Link className="btn secondary small" href={`/services/${s.id}#booking`}>
                   Choose package
                 </Link>
-              </Panel>
-            )),
-          )}
+              </Panel>))))}
         </div>
       </section>
       <section id="portfolio" className="detail-section">
-        <SectionHeading title="A glimpse of the good moments" />
+        <SectionHeading title="A glimpse of the good moments"/>
         <div className="portfolio-grid">
-          {portfolio.map((i) => (
-            <figure key={i.id}>
-              <img src={i.image} alt={i.caption} />
+          {portfolio.map((i) => (<figure key={i.id}>
+              <img src={i.image} alt={i.caption}/>
               <figcaption>{i.caption}</figcaption>
-            </figure>
-          ))}
+            </figure>))}
         </div>
       </section>
       <section id="availability" className="detail-section">
-        <SectionHeading
-          title="Let’s find your date"
-          description="Unlisted dates are available unless another request has already reserved them."
-        />
+        <SectionHeading title="Let’s find your date" description="Unlisted dates are available unless another request has already reserved them."/>
         <form className="row wrap">
           <Field label="Check an event date">
-            <input name="date" type="date" min={today()} defaultValue={date} required />
+            <input name="date" type="date" min={today()} defaultValue={date} required/>
           </Field>
           <button className="btn secondary">Check availability</button>
         </form>
-        {date && (
-          <p className={available(p.id, date) ? 'success-text' : 'error-text'}>
-            {available(p.id, date) ? 'Available' : 'Unavailable'} on {dateLabel(date)}.
-          </p>
-        )}
+        {date && (<p className={(await available(p.id, date)) ? 'success-text' : 'error-text'}>
+            {(await available(p.id, date)) ? 'Available' : 'Unavailable'} on {dateLabel(date)}.
+          </p>)}
         <div className="row wrap">
-          {dates.map((d) => (
-            <Badge key={d.date} tone={d.status === 'AVAILABLE' ? 'green' : 'amber'}>
+          {dates.map((d) => (<Badge key={d.date} tone={d.status === 'AVAILABLE' ? 'green' : 'amber'}>
               {dateLabel(d.date)} · {d.status.toLowerCase()}
-            </Badge>
-          ))}
-          {booked.map((d) => (
-            <Badge key={d.date}>{dateLabel(d.date)} · booked</Badge>
-          ))}
+            </Badge>))}
+          {booked.map((d) => (<Badge key={d.date}>{dateLabel(d.date)} · booked</Badge>))}
         </div>
       </section>
-      <ReviewSection providerId={p.id} />
-    </main>
-  );
+      <ReviewSection providerId={p.id}/>
+    </main>);
 }
-export function BundlesPage({ date }: { date?: string }) {
-  const list = bundles(date);
-  return (
-    <main className="container page-space">
-      <Heading
-        eyebrow="BETTER TOGETHER"
-        title="A whole team. One lovely plan."
-        description="Administrator-curated bundles, with every supplier’s terms agreed up front."
-      />
+export async function BundlesPage({ date }: {
+    date?: string;
+}) {
+    const list = (await bundles(date));
+    return (<main className="container page-space">
+      <Heading eyebrow="BETTER TOGETHER" title="A whole team. One lovely plan." description="Administrator-curated bundles, with every supplier’s terms agreed up front."/>
       <form className="row bundle-date">
         <Field label="When is your celebration?">
-          <input type="date" name="date" min={today()} defaultValue={date} />
+          <input type="date" name="date" min={today()} defaultValue={date}/>
         </Field>
         <button className="btn secondary">Check all suppliers</button>
       </form>
       <div className="bundle-grid">
-        {list.map((b) => (
-          <BundleCard key={b.id} bundle={b} date={date} />
-        ))}
+        {list.map((b) => (<BundleCard key={b.id} bundle={b} date={date}/>))}
       </div>
-      {!list.length && (
-        <Empty title="Something good is coming together.">
+      {!list.length && (<Empty title="Something good is coming together.">
           Bundles appear here once all suppliers approve.
-        </Empty>
-      )}
-    </main>
-  );
+        </Empty>)}
+    </main>);
 }
-export function BundleDetail({
-  bundleId,
-  date,
-  user,
-}: {
-  bundleId: string;
-  date?: string;
-  user: User | null;
+export async function BundleDetail({ bundleId, date, user, }: {
+    bundleId: string;
+    date?: string;
+    user: User | null;
 }) {
-  const b = bundles(date).find((b) => b.id === bundleId);
-  if (!b) notFound();
-  return (
-    <main className="container page-space">
-      <Heading eyebrow="CURATED BUNDLE" title={b.name} description={b.description} />
-      <img className="detail-cover" src={b.image} alt={b.name} />
+    const b = (await bundles(date)).find((b) => b.id === bundleId);
+    if (!b)
+        notFound();
+    return (<main className="container page-space">
+      <Heading eyebrow="CURATED BUNDLE" title={b.name} description={b.description}/>
+      <img className="detail-cover" src={b.image} alt={b.name}/>
       <div className="detail-layout">
         <div>
-          <SectionHeading
-            title="Meet your celebration team"
-            description="Each supplier has approved these package terms. Your booking reserves them together."
-          />
-          {b.items.map((i) => (
-            <Panel key={i.id}>
+          <SectionHeading title="Meet your celebration team" description="Each supplier has approved these package terms. Your booking reserves them together."/>
+          {b.items.map((i) => (<Panel key={i.id}>
               <div className="row between">
                 <div>
                   <Link href={`/providers/${i.provider_id}`}>
                     <h3>
                       {i.business_name}
-                      <ArrowUpRight size={16} />
+                      <ArrowUpRight size={16}/>
                     </h3>
                   </Link>
                   <p>
                     {i.service_title} · {i.package_name}
                   </p>
                 </div>
-                <Price value={i.price} />
+                <Price value={i.price}/>
               </div>
-              <Inclusions text={i.inclusions} />
+              <Inclusions text={i.inclusions}/>
               <p>
                 <strong>Exclusions:</strong> {i.exclusions || 'None specified.'}
               </p>
               <p className="muted">{i.terms}</p>
               <Badge tone="green">Supplier approved</Badge>
-            </Panel>
-          ))}
+            </Panel>))}
         </div>
         <aside>
-          <BookingForm user={user} bundle={b} date={date} />
+          <BookingForm user={user} bundle={b} date={date}/>
           <TrustNote />
         </aside>
       </div>
-    </main>
-  );
+    </main>);
 }
