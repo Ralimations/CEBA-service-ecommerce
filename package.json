@@ -12,7 +12,7 @@
     "start": "next start --hostname 127.0.0.1",
     "typecheck": "next typegen && tsc --noEmit",
     "lint": "eslint .",
-    "test": "tsx --test tests/*.test.ts",
+    "test": "tsx tests/isolated.ts",
     "db:migrate": "tsx database/manage.ts migrate",
     "db:seed": "tsx database/manage.ts seed",
     "test:smoke": "tsx tests/smoke.ts",

@@ -1,4 +1,3 @@
-import { mapAsync } from '@/lib/async';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Plus, ArrowUpRight } from 'lucide-react';
@@ -196,19 +195,21 @@ export async function ProviderPackages({ user }: {
         id: string;
         title: string;
     }>('SELECT id,title FROM services WHERE provider_id=?', p.id));
+    const packages = await all<Package>('SELECT k.* FROM packages k JOIN services s ON s.id=k.service_id WHERE s.provider_id=?', p.id);
+    const byService = Map.groupBy(packages, k => k.service_id);
     return (<>
       <Heading title="Your packages" description="The clear, thoughtful options that help customers choose."/>
-      {(await mapAsync(services, async (s) => (<Panel key={s.id}>
+      {services.map(s => (<Panel key={s.id}>
           <SectionHeading title={s.title} href={`/provider/services/${s.id}`} label="Manage packages"/>
           <div className="three-grid">
-            {(await all<Package>('SELECT * FROM packages WHERE service_id=?', s.id)).map((k) => (<div key={k.id}>
+            {(byService.get(s.id) || []).map((k) => (<div key={k.id}>
                 <h3>{k.name}</h3>
                 <Price value={k.price}/>
                 <p>{k.description}</p>
                 <Badge>{k.active ? 'Active' : 'Archived'}</Badge>
               </div>))}
           </div>
-        </Panel>)))}
+        </Panel>))}
       {!services.length && (<Empty title="Start with a service." href="/provider/services/new" label="Create a service">
           Packages belong to your service listings.
         </Empty>)}

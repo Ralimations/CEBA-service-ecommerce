@@ -1,8 +1,7 @@
-import { mapAsync } from '@/lib/async';
 import Link from 'next/link';
 import { ArrowRight, Ticket, Gift, ShieldCheck, CalendarDays, Bell, CheckCircle2, } from 'lucide-react';
-import { all, one, settings, now } from '@/server/db';
-import { bookingsFor, customerStats, dashboardStats } from '@/server/queries';
+import { all, now } from '@/server/db';
+import { bookingsFor, customerStats, dashboardStats, settings } from '@/server/view-data';
 import type { User } from '@/lib/domain';
 import type { Voucher } from '@/types/models';
 import { Badge, Heading, Metrics, Panel, SectionHeading, Empty, Field, Status, } from '@/components/ui';
@@ -169,14 +168,14 @@ export async function ProfilePage({ user }: {
 export async function VoucherWallet({ user }: {
     user: User;
 }) {
-    const list = (await all<Voucher>(`SELECT v.* FROM vouchers v WHERE v.active=1 AND v.expires_at::timestamptz>?::timestamptz AND (v.owner_id IS NULL OR v.owner_id=?) ORDER BY v.first_only DESC`, now(), user.id));
+    const list = (await all<Voucher & { used: number }>(`SELECT v.*,
+      (SELECT COUNT(*)::int FROM voucher_redemptions r WHERE r.voucher_id=v.id AND r.user_id=?) used
+      FROM vouchers v WHERE v.active=1 AND v.expires_at::timestamptz>?::timestamptz AND (v.owner_id IS NULL OR v.owner_id=?) ORDER BY v.first_only DESC`, user.id, now(), user.id));
     return (<>
       <Heading eyebrow="A LITTLE SOMETHING FOR YOU" title="Your voucher wallet" description="More room in your budget for the details you love."/>
       <div className="voucher-grid">
-        {(await mapAsync(list, async (v) => {
-            const used = (await one<{
-                n: number;
-            }>('SELECT COUNT(*)::int n FROM voucher_redemptions WHERE voucher_id=? AND user_id=?', v.id, user.id))!.n;
+        {list.map(v => {
+            const used = v.used;
             return (<article className="voucher-card" key={v.id}>
               <div className="voucher-value">
                 <Ticket size={26}/>
@@ -205,7 +204,7 @@ export async function VoucherWallet({ user }: {
                 </Link>
               </div>
             </article>);
-        }))}
+        })}
       </div>
       {!list.length && (<Empty title="More good things are on the way.">No active vouchers right now.</Empty>)}
       <p className="subtle-note">

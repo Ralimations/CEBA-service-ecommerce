@@ -1,8 +1,7 @@
-import { mapAsync } from '@/lib/async';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
-import { all, settings } from '@/server/db';
-import { providers, dashboardStats, bookingsFor, scalar } from '@/server/queries';
+import { all, one } from '@/server/db';
+import { providers, dashboardStats, bookingsFor, settings } from '@/server/view-data';
 import type { User } from '@/lib/domain';
 import { badgeEligible } from '@/lib/domain';
 import { settingLabels, defaults } from '@/config/platform';
@@ -15,6 +14,12 @@ export async function AdminOverview({ user }: {
 }) {
     const stats = (await dashboardStats(user));
     const ps = (await providers());
+    const counts = (await one<{customers: number; held: number; disputes: number; placements: number; tickets: number}>(`SELECT
+      (SELECT COUNT(*)::int FROM users WHERE role='CUSTOMER') customers,
+      (SELECT COALESCE(SUM(total),0)::double precision FROM bookings WHERE escrow_status IN ('HELD_IN_ESCROW','DISPUTED')) held,
+      (SELECT COUNT(*)::int FROM disputes WHERE status IN ('OPEN','UNDER_REVIEW')) disputes,
+      (SELECT COUNT(*)::int FROM placements WHERE status='ACTIVE' AND starts_at::timestamptz<=CURRENT_TIMESTAMP AND expires_at::timestamptz>CURRENT_TIMESTAMP) placements,
+      (SELECT COUNT(*)::int FROM support_tickets WHERE status IN ('OPEN','IN_PROGRESS')) tickets`))!;
     const monthly = (await all<{
         month: string;
         count: number;
@@ -24,7 +29,7 @@ export async function AdminOverview({ user }: {
     return (<>
       <Heading eyebrow="PLATFORM WORKSPACE" title="The bigger picture." description="Every person, every booking, every little detail — working together." action={<Badge tone="green">Local development environment</Badge>}/>
       <Metrics items={[
-            { label: 'Customers', value: (await scalar("SELECT COUNT(*) FROM users WHERE role='CUSTOMER'")) },
+            { label: 'Customers', value: counts.customers },
             {
                 label: 'Providers',
                 value: ps.length,
@@ -36,19 +41,19 @@ export async function AdminOverview({ user }: {
       <Metrics items={[
             {
                 label: 'Gross escrow held / frozen',
-                value: money((await scalar("SELECT COALESCE(SUM(total),0) FROM bookings WHERE escrow_status IN ('HELD_IN_ESCROW','DISPUTED')"))),
+                value: money(counts.held),
             },
             {
                 label: 'Open disputes',
-                value: (await scalar("SELECT COUNT(*) FROM disputes WHERE status IN ('OPEN','UNDER_REVIEW')")),
+                value: counts.disputes,
             },
             {
                 label: 'Active placements',
-                value: (await scalar("SELECT COUNT(*) FROM placements WHERE status='ACTIVE' AND starts_at::timestamptz<=CURRENT_TIMESTAMP AND expires_at::timestamptz>CURRENT_TIMESTAMP")),
+                value: counts.placements,
             },
             {
                 label: 'Support queue',
-                value: (await scalar("SELECT COUNT(*) FROM support_tickets WHERE status IN ('OPEN','IN_PROGRESS')")),
+                value: counts.tickets,
             },
         ]}/>
       <div className="two-grid">
@@ -178,6 +183,9 @@ export async function AdminServices({ q = '' }: {
         status: string;
         moderated: number;
     }>(`SELECT s.*,p.business_name,c.name category FROM services s JOIN providers p ON p.id=s.provider_id JOIN categories c ON c.id=s.category_id WHERE s.title LIKE ? OR p.business_name LIKE ? ORDER BY s.created_at DESC`, `%${q}%`, `%${q}%`));
+    const packages = list.length ? await all<{service_id: string; name: string; price: number; inclusions: string}>(
+      'SELECT service_id,name,price,inclusions FROM packages WHERE service_id IN (SELECT value FROM jsonb_array_elements_text(?::text::jsonb))', JSON.stringify(list.map(s => s.id))) : [];
+    const byService = Map.groupBy(packages, p => p.service_id);
     return (<>
       <Heading title="A marketplace worth browsing." description="Inspect listings and disable or restore inappropriate content."/>
       <form className="admin-search">
@@ -186,7 +194,7 @@ export async function AdminServices({ q = '' }: {
       </form>
       <Panel>
         <DataTable headings={['Service / provider', 'Category', 'Status', 'Packages', 'Moderation']}>
-          {(await mapAsync(list, async (s) => (<tr key={s.id}>
+          {list.map(s => (<tr key={s.id}>
               <td>
                 <Link href={`/services/${s.id}`}>{s.title}</Link>
                 <small>{s.business_name}</small>
@@ -198,11 +206,7 @@ export async function AdminServices({ q = '' }: {
               <td>
                 <details>
                   <summary>Inspect packages</summary>
-                  {(await all<{
-                name: string;
-                price: number;
-                inclusions: string;
-            }>('SELECT * FROM packages WHERE service_id=?', s.id)).map((p, i) => (<div key={i}>
+                  {(byService.get(s.id) || []).map((p, i) => (<div key={i}>
                       <strong>
                         {p.name} · {money(p.price)}
                       </strong>
@@ -213,7 +217,7 @@ export async function AdminServices({ q = '' }: {
               <td>
                 <ActionButton action="service.moderate" data={{ id: s.id, disabled: s.moderated ? 0 : 1 }} label={s.moderated ? 'Restore listing' : 'Disable listing'}/>
               </td>
-            </tr>)))}
+            </tr>))}
         </DataTable>
       </Panel>
     </>);

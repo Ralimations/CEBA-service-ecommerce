@@ -29,8 +29,14 @@ import { ActionForm } from './action-form';
 import type { User } from '@/lib/domain';
 const dashboardFor = (role: string) =>
   role === 'ADMIN' ? '/admin' : role === 'PROVIDER' ? '/provider' : '/dashboard';
-export function Header({ user, unread }: { user: User | null; unread: number }) {
+export function Header(props: { user: User | null; unread: number }) {
   const path = usePathname();
+  return <HeaderView {...props} path={path}/>;
+}
+export function HeaderPlaceholder() {
+  return <HeaderView user={null} unread={0} pending path=""/>;
+}
+function HeaderView({ user, unread, pending = false, path }: { user: User | null; unread: number; pending?: boolean; path: string }) {
   const [open, setOpen] = useState(false);
   return (
     <header className="site-header">
@@ -64,7 +70,7 @@ export function Header({ user, unread }: { user: User | null; unread: number }) 
           </Link>
         </nav>
         <div className="header-actions">
-          {user ? (
+          {pending ? <span className="muted" role="status">Loading account…</span> : user ? (
             <>
               <Link
                 href="/notifications"

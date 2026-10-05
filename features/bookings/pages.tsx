@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { CalendarDays, MapPin, Users, Phone, ArrowRight, ShieldCheck } from 'lucide-react';
-import { booking, bookingsFor } from '@/server/queries';
+import { booking, bookingsFor } from '@/server/view-data';
 import { all } from '@/server/db';
 import type { User } from '@/lib/domain';
 import { Badge, Empty, Field, Heading, Panel, Status, Inclusions, DataTable, TrustNote, } from '@/components/ui';

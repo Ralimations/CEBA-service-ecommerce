@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { ArrowRight, CheckCircle2, Camera, ShieldCheck, Star, TrendingUp } from 'lucide-react';
-import { all, one, settings, now } from '@/server/db';
-import { providerByUser, bookingsFor, dashboardStats, bundles, reviews } from '@/server/queries';
+import { all, one, now } from '@/server/db';
+import { providerByUser, bookingsFor, dashboardStats, bundles, reviews, settings } from '@/server/view-data';
 import { activeCategories } from '@/server/auth';
 import type { User } from '@/lib/domain';
 import { Heading, Metrics, Panel, SectionHeading, Field, Status, Empty, Badge, Rating, DataTable, } from '@/components/ui';
@@ -15,13 +15,12 @@ export async function ProviderOverview({ user }: {
     const stats = (await dashboardStats(user));
     const list = (await bookingsFor(user)).filter((b) => !['COMPLETED', 'CANCELLED'].includes(b.status))
         .slice(0, 5);
-    const serviceCount = (await one<{
-        n: number;
-    }>('SELECT COUNT(*)::int n FROM services WHERE provider_id=?', p.id))!.n;
-    const packageCount = (await one<{
-        n: number;
-    }>('SELECT COUNT(*)::int n FROM packages k JOIN services s ON s.id=k.service_id WHERE s.provider_id=?', p.id))!.n;
-    const calendar = !!(await one('SELECT 1 FROM availability WHERE provider_id=?', p.id));
+    const { serviceCount, packageCount, calendar, portfolio } = (await one<{
+      serviceCount: number; packageCount: number; calendar: boolean; portfolio: boolean;
+    }>(`SELECT (SELECT COUNT(*)::int FROM services WHERE provider_id=?) "serviceCount",
+      (SELECT COUNT(*)::int FROM packages k JOIN services s ON s.id=k.service_id WHERE s.provider_id=?) "packageCount",
+      EXISTS(SELECT 1 FROM availability WHERE provider_id=?) calendar,
+      EXISTS(SELECT 1 FROM portfolio WHERE provider_id=?) portfolio`, p.id, p.id, p.id, p.id))!;
     const steps = [
         {
             title: 'Business information',
@@ -34,7 +33,7 @@ export async function ProviderOverview({ user }: {
         { title: 'Availability', done: calendar, href: '/provider/calendar' },
         {
             title: 'Profile presentation',
-            done: !!p.cover && !!(await one('SELECT id FROM portfolio WHERE provider_id=?', p.id)),
+            done: !!p.cover && portfolio,
             href: '/provider/profile',
         },
     ];
