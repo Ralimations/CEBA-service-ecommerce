@@ -20,7 +20,7 @@ export async function deliverReminders(user: User) {
             id: string;
             placement: string;
             expires_at: string;
-        }>("SELECT f.* FROM placements f JOIN providers p ON p.id=f.provider_id WHERE p.user_id=? AND f.status='ACTIVE' AND f.expires_at>? AND f.expires_at<=?", user.id, now(), limit));
+        }>("SELECT f.* FROM placements f JOIN providers p ON p.id=f.provider_id WHERE p.user_id=? AND f.status='ACTIVE' AND f.expires_at::timestamptz>?::timestamptz AND f.expires_at::timestamptz<=?::timestamptz", user.id, now(), limit));
         for (const f of expiring)
             (await run('INSERT INTO notifications(id,user_id,title,body,href) VALUES(?,?,?,?,?) ON CONFLICT DO NOTHING', `placement-reminder-${f.id}`, user.id, 'Your featured placement ends soon', `${f.placement.toLowerCase()} visibility expires on ${f.expires_at.slice(0, 10)}.`, '/provider/promotions'));
     }

@@ -357,7 +357,7 @@ export async function verifyHandshake(user: User, itemId: string, gate: 'START' 
         attempts: number;
         used_at: string | null;
     }>('SELECT * FROM handshake_tokens WHERE booking_item_id=? AND gate=? ORDER BY created_at DESC,id DESC LIMIT 1', itemId, gate));
-    assert(token && !token.used_at && token.expires_at > now() && token.attempts < 5, 'This code has expired, was used, or is locked. Ask for a new code.');
+    assert(token && !token.used_at && Date.parse(token.expires_at) > Date.now() && token.attempts < 5, 'This code has expired, was used, or is locked. Ask for a new code.');
     assert(token.issuer_id !== user.id, 'The code must be verified by the other party.', 403);
     if (hashToken(input.trim().toUpperCase()) !== token.token_hash) {
         (await run('UPDATE handshake_tokens SET attempts=attempts+1 WHERE id=?', token.id));
@@ -366,7 +366,7 @@ export async function verifyHandshake(user: User, itemId: string, gate: 'START' 
     return (await transaction(async () => {
         const { b, item } = (await itemFor(user, itemId));
         assert(b.escrow_status === 'HELD_IN_ESCROW', 'Verification cannot proceed while escrow is frozen or settled.');
-        const updated = (await run('UPDATE handshake_tokens SET used_at=?,verified_by=? WHERE id=? AND used_at IS NULL AND expires_at>?', now(), user.id, token.id, now()));
+        const updated = (await run('UPDATE handshake_tokens SET used_at=?,verified_by=? WHERE id=? AND used_at IS NULL AND expires_at::timestamptz>?::timestamptz', now(), user.id, token.id, now()));
         assert(updated.changes === 1, 'This code has already been used.');
         if (gate === 'START') {
             assert(item.status === 'CONFIRMED', 'This service has already started.');

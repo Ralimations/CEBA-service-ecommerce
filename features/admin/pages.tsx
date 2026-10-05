@@ -19,7 +19,7 @@ export async function AdminOverview({ user }: {
         month: string;
         count: number;
         volume: number;
-    }>('SELECT substr(event_date,1,7) month,COUNT(*) count,SUM(total) volume FROM bookings GROUP BY month ORDER BY month DESC LIMIT 6')).reverse();
+    }>('SELECT substr(event_date,1,7) AS "month",COUNT(*)::int AS count,SUM(total)::double precision AS volume FROM bookings GROUP BY 1 ORDER BY 1 DESC LIMIT 6')).reverse();
     const max = Math.max(1, ...monthly.map((m) => m.volume));
     return (<>
       <Heading eyebrow="PLATFORM WORKSPACE" title="The bigger picture." description="Every person, every booking, every little detail — working together." action={<Badge tone="green">Local development environment</Badge>}/>
@@ -44,7 +44,7 @@ export async function AdminOverview({ user }: {
             },
             {
                 label: 'Active placements',
-                value: (await scalar("SELECT COUNT(*) FROM placements WHERE status='ACTIVE' AND starts_at<=CURRENT_TIMESTAMP AND expires_at>CURRENT_TIMESTAMP")),
+                value: (await scalar("SELECT COUNT(*) FROM placements WHERE status='ACTIVE' AND starts_at::timestamptz<=CURRENT_TIMESTAMP AND expires_at::timestamptz>CURRENT_TIMESTAMP")),
             },
             {
                 label: 'Support queue',

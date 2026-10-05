@@ -61,7 +61,6 @@ export function db(): DatabaseClient {
  * rewriting every placeholder.
  */
 function postgresQuery(sql: string) {
-  sql = sql.replace(/CURRENT_TIMESTAMP/g, 'CURRENT_TIMESTAMP::text');
   let index = 0;
   let singleQuoted = false;
   let doubleQuoted = false;

@@ -180,7 +180,7 @@ export async function portfolioAction(user: User, input: unknown) {
         assert(data.image, 'Choose an image URL.');
         const n = (await one<{
             n: number;
-        }>('SELECT COUNT(*) n FROM portfolio WHERE provider_id=?', p.id))!.n;
+        }>('SELECT COUNT(*)::int n FROM portfolio WHERE provider_id=?', p.id))!.n;
         assert(n < (p.vip ? 30 : 8), 'Your plan portfolio limit has been reached.');
         (await insert('portfolio', { id: id(), provider_id: p.id, image: data.image, caption: data.caption }));
     }

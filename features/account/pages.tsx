@@ -169,14 +169,14 @@ export async function ProfilePage({ user }: {
 export async function VoucherWallet({ user }: {
     user: User;
 }) {
-    const list = (await all<Voucher>(`SELECT v.* FROM vouchers v WHERE v.active=1 AND v.expires_at>? AND (v.owner_id IS NULL OR v.owner_id=?) ORDER BY v.first_only DESC`, now(), user.id));
+    const list = (await all<Voucher>(`SELECT v.* FROM vouchers v WHERE v.active=1 AND v.expires_at::timestamptz>?::timestamptz AND (v.owner_id IS NULL OR v.owner_id=?) ORDER BY v.first_only DESC`, now(), user.id));
     return (<>
       <Heading eyebrow="A LITTLE SOMETHING FOR YOU" title="Your voucher wallet" description="More room in your budget for the details you love."/>
       <div className="voucher-grid">
         {(await mapAsync(list, async (v) => {
             const used = (await one<{
                 n: number;
-            }>('SELECT COUNT(*) n FROM voucher_redemptions WHERE voucher_id=? AND user_id=?', v.id, user.id))!.n;
+            }>('SELECT COUNT(*)::int n FROM voucher_redemptions WHERE voucher_id=? AND user_id=?', v.id, user.id))!.n;
             return (<article className="voucher-card" key={v.id}>
               <div className="voucher-value">
                 <Ticket size={26}/>

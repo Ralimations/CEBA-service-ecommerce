@@ -4,7 +4,7 @@ import type { Voucher } from '@/types/models';
 export async function validateVoucher(code: string, userId: string, subtotal: number, categories: string[], exceptBooking = '') {
     const voucher = (await one<Voucher>('SELECT * FROM vouchers WHERE code=?', code.trim().toUpperCase()));
     assert(voucher, 'Voucher code was not found.');
-    assert(voucher.active && voucher.valid_from <= now() && voucher.expires_at > now(), 'This voucher is inactive, not yet valid, or expired.');
+    assert(voucher.active && Date.parse(voucher.valid_from) <= Date.now() && Date.parse(voucher.expires_at) > Date.now(), 'This voucher is inactive, not yet valid, or expired.');
     assert(!voucher.owner_id || voucher.owner_id === userId, 'This voucher belongs to another customer.');
     assert(subtotal >= voucher.min_spend, 'This booking does not meet the voucher minimum spend.');
     const redeemed = (await all<{
@@ -23,7 +23,7 @@ export async function validateVoucher(code: string, userId: string, subtotal: nu
     const history = (await one<{
         paid: number;
         completed: number;
-    }>(`SELECT SUM(CASE WHEN escrow_status IN ('HELD_IN_ESCROW','RELEASED','DISPUTED') THEN 1 ELSE 0 END) paid,SUM(CASE WHEN status='COMPLETED' THEN 1 ELSE 0 END) completed FROM bookings WHERE customer_id=? AND id<>?`, userId, exceptBooking))!;
+    }>(`SELECT SUM(CASE WHEN escrow_status IN ('HELD_IN_ESCROW','RELEASED','DISPUTED') THEN 1 ELSE 0 END)::int paid,SUM(CASE WHEN status='COMPLETED' THEN 1 ELSE 0 END)::int completed FROM bookings WHERE customer_id=? AND id<>?`, userId, exceptBooking))!;
     assert(!voucher.first_only || !history.paid, 'This voucher is for your first paid booking only.');
     const ranks = ['BRONZE', 'SILVER', 'GOLD', 'PLATINUM'];
     assert(ranks.indexOf(rankFor(history.completed || 0, (await settings()))) >=
@@ -45,7 +45,7 @@ export async function rewardReferral(userId: string) {
         return;
     const completed = (await one<{
         n: number;
-    }>("SELECT COUNT(*) n FROM bookings WHERE customer_id=? AND status='COMPLETED'", userId))!.n;
+    }>("SELECT COUNT(*)::int n FROM bookings WHERE customer_id=? AND status='COMPLETED'", userId))!.n;
     if (completed < 1)
         return;
     const updated = (await run('UPDATE referrals SET rewarded_at=? WHERE id=? AND rewarded_at IS NULL', now(), referral.id));
