@@ -1,4 +1,5 @@
 import { cookies } from 'next/headers';
+import { cache } from 'react';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { all, one, run, insert, id, now, transaction, notify, admins } from './db';
@@ -11,9 +12,9 @@ export async function userFromToken(token?: string): Promise<User | null> {
         return null;
     return ((await one<User>(`SELECT u.id,u.name,u.email,u.phone,u.role,u.status,u.referral_code,u.created_at FROM users u JOIN sessions s ON s.user_id=u.id WHERE s.token_hash=? AND s.expires_at::timestamptz>?::timestamptz AND u.status='ACTIVE'`, hashToken(token), now())) ?? null);
 }
-export async function currentUser() {
+export const currentUser = cache(async function currentUser() {
     return (await userFromToken((await cookies()).get(COOKIE)?.value));
-}
+});
 export async function requireUser(...roles: Role[]) {
     const user = await currentUser();
     if (!user)

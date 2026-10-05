@@ -1,10 +1,9 @@
-import { flatMapAsync } from '@/lib/async';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ArrowRight, ArrowUpRight, Search, CalendarDays, MapPin, ShieldCheck, Sparkles, Camera, Utensils, Mic, Flower2, Brush, Wine, Music2, Heart, Building2, Check, Layers, SlidersHorizontal, } from 'lucide-react';
-import { services, service, provider, packagesFor, bundles, searchBundles, reviews, available, type Search as Filters, } from '@/server/queries';
-import { all, settings } from '@/server/db';
-import { activeCategories } from '@/server/auth';
+import { available, filterServices, type Search as Filters } from '@/server/queries';
+import { services, serviceContent, providerContent, providerCalendar, bundles, bundle, searchBundles, settings, activeCategories } from '@/server/public-data';
+import type { Review } from '@/types/models';
 import type { User } from '@/lib/domain';
 import { ServiceCard, BundleCard, ProviderMini } from '@/components/cards';
 import { Badge, Rating, Price, Heading, SectionHeading, Empty, Panel, Field, Inclusions, TrustNote, } from '@/components/ui';
@@ -231,7 +230,7 @@ export async function Browse({ search }: {
         type?: string;
     };
 }) {
-    const results = (await services(search));
+    const results = search.type === 'bundles' ? [] : (await services(search));
     const bundleResults = search.type === 'bundles' ? (await searchBundles(search)) : [];
     const resultCount = search.type === 'bundles' ? bundleResults.length : results.length;
     const categories = (await activeCategories());
@@ -347,11 +346,10 @@ export async function ServiceDetail({ serviceId, date, user, }: {
     date?: string;
     user: User | null;
 }) {
-    const s = (await service(serviceId));
-    if (!s)
+    const content = await serviceContent(serviceId);
+    if (!content)
         notFound();
-    const p = (await provider(s.provider_id))!;
-    const packs = (await packagesFor(s.id));
+    const { service: s, provider: p, packages: packs, addons, reviews } = content;
     return (<main className="container page-space">
       <div className="breadcrumbs">
         <Link href="/browse">Explore services</Link>
@@ -418,23 +416,18 @@ export async function ServiceDetail({ serviceId, date, user, }: {
                 </Panel>))}
             </div>
           </section>
-          <ReviewSection providerId={p.id}/>
+          <ReviewSection list={reviews}/>
         </div>
         <aside id="booking">
-          <BookingForm user={user} service={s} packages={packs} addons={(await all<{
-            id: string;
-            name: string;
-            price: number;
-        }>('SELECT * FROM addons WHERE service_id=? AND active=1', s.id))} date={date}/>
+          <BookingForm user={user} service={s} packages={packs} addons={addons} date={date}/>
           <TrustNote />
         </aside>
       </div>
     </main>);
 }
-export async function ReviewSection({ providerId }: {
-    providerId: string;
+export function ReviewSection({ list }: {
+    list: Review[];
 }) {
-    const list = (await reviews(providerId));
     return (<section className="detail-section" id="reviews">
       <SectionHeading title="Kind words, real experiences." description="Reviews from completed development bookings."/>
       {list.length ? (list.slice(0, 12).map((r) => (<article className="review" key={r.id}>
@@ -459,23 +452,16 @@ export async function ProviderDetail({ providerId, date }: {
     providerId: string;
     date?: string;
 }) {
-    const p = (await provider(providerId));
-    if (!p || p.status !== 'ACTIVE')
+    const content = await providerContent(providerId);
+    if (!content)
         notFound();
-    const listing = (await services({ date })).filter((s) => s.provider_id === p.id);
-    const portfolio = (await all<{
-        id: string;
-        image: string;
-        caption: string;
-    }>('SELECT * FROM portfolio WHERE provider_id=?', p.id));
-    const dates = (await all<{
-        date: string;
-        status: string;
-        note: string;
-    }>('SELECT date,status,note FROM availability WHERE provider_id=? AND date>=? ORDER BY date LIMIT 12', p.id, today()));
-    const booked = (await all<{
-        date: string;
-    }>('SELECT date FROM reservations WHERE provider_id=? AND date>=? ORDER BY date LIMIT 12', p.id, today()));
+    const { provider: p, portfolio, packages, reviews } = content;
+    const [listing, calendar] = await Promise.all([
+      filterServices(content.services, { date }), providerCalendar(p.id, today()),
+    ]);
+    const { dates, booked } = calendar;
+    const isAvailable = date ? (listing.length ? listing[0].available : await available(p.id, date)) : true;
+    const byService = Map.groupBy(packages, k => k.service_id);
     return (<main className="container page-space">
       <img className="profile-cover" src={p.cover} alt={`${p.business_name} portfolio cover`}/>
       <div className="provider-profile-head">
@@ -539,7 +525,7 @@ export async function ProviderDetail({ providerId, date }: {
       <section id="packages" className="detail-section">
         <SectionHeading title="A package for your plans"/>
         <div className="three-grid">
-          {(await flatMapAsync(listing, async (s) => (await packagesFor(s.id)).map((k) => (<Panel key={k.id}>
+          {listing.flatMap(s => (byService.get(s.id) || []).map((k) => (<Panel key={k.id}>
                 <small>{s.title}</small>
                 <h3>{k.name}</h3>
                 <Price value={k.price}/>
@@ -547,7 +533,7 @@ export async function ProviderDetail({ providerId, date }: {
                 <Link className="btn secondary small" href={`/services/${s.id}#booking`}>
                   Choose package
                 </Link>
-              </Panel>))))}
+              </Panel>)))}
         </div>
       </section>
       <section id="portfolio" className="detail-section">
@@ -567,8 +553,8 @@ export async function ProviderDetail({ providerId, date }: {
           </Field>
           <button className="btn secondary">Check availability</button>
         </form>
-        {date && (<p className={(await available(p.id, date)) ? 'success-text' : 'error-text'}>
-            {(await available(p.id, date)) ? 'Available' : 'Unavailable'} on {dateLabel(date)}.
+        {date && (<p className={isAvailable ? 'success-text' : 'error-text'}>
+            {isAvailable ? 'Available' : 'Unavailable'} on {dateLabel(date)}.
           </p>)}
         <div className="row wrap">
           {dates.map((d) => (<Badge key={d.date} tone={d.status === 'AVAILABLE' ? 'green' : 'amber'}>
@@ -577,7 +563,7 @@ export async function ProviderDetail({ providerId, date }: {
           {booked.map((d) => (<Badge key={d.date}>{dateLabel(d.date)} · booked</Badge>))}
         </div>
       </section>
-      <ReviewSection providerId={p.id}/>
+      <ReviewSection list={reviews}/>
     </main>);
 }
 export async function BundlesPage({ date }: {
@@ -605,7 +591,7 @@ export async function BundleDetail({ bundleId, date, user, }: {
     date?: string;
     user: User | null;
 }) {
-    const b = (await bundles(date)).find((b) => b.id === bundleId);
+    const b = await bundle(bundleId, date);
     if (!b)
         notFound();
     return (<main className="container page-space">

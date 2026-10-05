@@ -1,7 +1,9 @@
 import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
 import { Sparkles } from 'lucide-react';
-import { currentUser, requireUser, activeCategories, homeFor } from '@/server/auth';
+import { currentUser, requireUser, homeFor } from '@/server/auth';
+import { activeCategories } from '@/server/public-data';
+import { Suspense } from 'react';
 import { Sidebar } from '@/components/navigation';
 import { AuthForm } from '@/components/auth-form';
 import { Home, Browse, ServiceDetail, ProviderDetail, BundlesPage, BundleDetail, } from '@/features/marketplace/pages';
@@ -15,14 +17,18 @@ import { AdminVouchers, VoucherEditor, AdminSubscriptions, AdminPlacements, Admi
 import { DomainError } from '@/lib/domain';
 import { eventDate } from '@/server/bookings';
 import type { ReactNode } from 'react';
-export const runtime = 'nodejs';
 type Props = {
     params: Promise<{
         path?: string[];
     }>;
     searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
-export default async function Page({ params, searchParams }: Props) {
+export default function Page(props: Props) {
+    return <Suspense fallback={<main className="container page-space" aria-busy="true"><p role="status">Loading your next moment…</p></main>}>
+      <RouteContent {...props}/>
+    </Suspense>;
+}
+async function RouteContent({ params, searchParams }: Props) {
     const { path = [] } = await params;
     const search = Object.fromEntries(Object.entries(await searchParams).map(([k, v]) => [k, Array.isArray(v) ? v[0] : v || '']));
     const [root, section, itemId] = path;
@@ -116,7 +122,7 @@ export default async function Page({ params, searchParams }: Props) {
     let page: ReactNode;
     if ((root === 'bookings' || root === 'checkout') && section) {
         try {
-            const { booking } = await import('@/server/queries');
+            const { booking } = await import('@/server/view-data');
             (await booking(section, active));
         }
         catch (error) {
@@ -137,16 +143,12 @@ export default async function Page({ params, searchParams }: Props) {
         page = <SupportPage user={active}/>;
     else if (root === 'bookings' && path.length <= 2) {
         if (section) {
-            const { booking } = await import('@/server/queries');
-            (await booking(section, active));
             page = <BookingDetail user={active} bookingId={section}/>;
         }
         else
             page = <BookingList user={active} status={search.status}/>;
     }
     else if (root === 'checkout' && section && path.length === 2) {
-        const { booking } = await import('@/server/queries');
-        (await booking(section, active));
         page = <Checkout user={active} bookingId={section}/>;
     }
     else if (root === 'provider') {

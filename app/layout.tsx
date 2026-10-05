@@ -1,11 +1,12 @@
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
 import Link from 'next/link';
 import { ArrowUpRight } from 'lucide-react';
 import { platform } from '@/config/platform';
 import { currentUser } from '@/server/auth';
 import { one } from '@/server/db';
 import { deliverReminders } from '@/server/reminders';
-import { Header } from '@/components/navigation';
+import { Header, HeaderPlaceholder } from '@/components/navigation';
 import { FaqChat } from '@/components/faq-chat';
 import './globals.css';
 export const metadata: Metadata = {
@@ -13,10 +14,7 @@ export const metadata: Metadata = {
     description: 'Find thoughtful event services, trusted providers, and curated celebration bundles with SoiréeSource.',
     icons: { icon: '/soiree-source-logo.png' },
 };
-export const dynamic = 'force-dynamic';
-export default async function RootLayout({ children }: {
-    children: React.ReactNode;
-}) {
+async function SessionHeader() {
     const user = await currentUser();
     if (user)
         (await deliverReminders(user));
@@ -25,12 +23,17 @@ export default async function RootLayout({ children }: {
             n: number;
         }>('SELECT COUNT(*)::int n FROM notifications WHERE user_id=? AND read_at IS NULL', user.id))!.n
         : 0;
+    return <Header user={user} unread={unread}/>;
+}
+export default function RootLayout({ children }: { children: React.ReactNode }) {
     return (<html lang="en" data-scroll-behavior="smooth">
       <body>
         <a className="skip-link" href="#main-content">
           Skip to content
         </a>
-        <Header user={user} unread={unread}/>
+        <Suspense fallback={<HeaderPlaceholder/>}>
+          <SessionHeader />
+        </Suspense>
         <div id="main-content">{children}</div>
         <footer className="site-footer">
           <div>

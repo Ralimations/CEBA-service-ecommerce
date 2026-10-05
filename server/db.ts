@@ -5,6 +5,7 @@ import { resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { defaults } from '@/config/platform';
 import type { Settings } from '@/lib/domain';
+import { measureQuery } from './performance';
 
 export type Row = Record<string, string | number | boolean | null>;
 
@@ -14,7 +15,7 @@ type DatabaseClient = ReturnType<typeof postgres>;
 
 let connection: DatabaseClient | undefined;
 
-const transactionStorage = new AsyncLocalStorage<DatabaseClient>();
+const transactionStorage = new AsyncLocalStorage<{ client: DatabaseClient; queue: Promise<void> }>();
 
 function databaseUrl() {
   const url = process.env.POSTGRES_URL;
@@ -32,15 +33,21 @@ export function db(): DatabaseClient {
   const transaction = transactionStorage.getStore();
 
   if (transaction) {
-    return transaction;
+    return transaction.client;
   }
 
   if (!connection) {
+    const poolSize = Number(process.env.POSTGRES_POOL_MAX || 5);
+    if (!Number.isInteger(poolSize) || poolSize < 1 || poolSize > 10)
+      throw new Error('POSTGRES_POOL_MAX must be an integer between 1 and 10.');
     connection = postgres(databaseUrl(), {
       prepare: false,
+      // Supabase's supplied certificate chain needs its project CA for full
+      // verification. Require encryption; local test PostgreSQL may omit TLS.
+      ssl: new URL(databaseUrl()).hostname.endsWith('.supabase.com') ? 'require' : undefined,
 
-      // Keep the pool deliberately small for Vercel/serverless.
-      max: 5,
+      // Small shared pool: Fluid Compute can serve concurrent requests in one instance.
+      max: poolSize,
 
       idle_timeout: 20,
       connect_timeout: 10,
@@ -48,6 +55,22 @@ export function db(): DatabaseClient {
   }
 
   return connection;
+}
+
+async function execute(sql: string, params: SQLValue[]) {
+  const current = transactionStorage.getStore();
+  if (current) {
+    // Do not pipeline statements, including independent reads within a transaction.
+    const result = current.queue.then(() => current.client.unsafe(sql, params));
+    current.queue = result.then(() => {}, () => {});
+    return result;
+  }
+  // Postgres.js pipelines busy sockets by default, which is unsafe with the
+  // Supabase shared transaction pooler. Reserving prevents interleaved queries
+  // from separate requests without opening a new connection per query.
+  const reserved = await db().reserve();
+  try { return await reserved.unsafe(sql, params); }
+  finally { reserved.release(); }
 }
 
 /**
@@ -128,7 +151,7 @@ export async function all<T = Row>(
   sql: string,
   ...params: SQLValue[]
 ): Promise<T[]> {
-  const result = await db().unsafe(postgresQuery(sql), params);
+  const result = await measureQuery(sql, () => execute(postgresQuery(sql), params));
 
   return result.map((row) => ({ ...row })) as T[];
 }
@@ -137,7 +160,7 @@ export async function one<T = Row>(
   sql: string,
   ...params: SQLValue[]
 ): Promise<T | undefined> {
-  const result = await db().unsafe(postgresQuery(sql), params);
+  const result = await measureQuery(sql, () => execute(postgresQuery(sql), params));
 
   const row = result[0];
 
@@ -150,7 +173,7 @@ export async function run(
 ): Promise<{
   changes: number;
 }> {
-  const result = await db().unsafe(postgresQuery(sql), params);
+  const result = await measureQuery(sql, () => execute(postgresQuery(sql), params));
 
   return {
     changes: result.count ?? 0,
@@ -168,10 +191,10 @@ export async function insert(
 
   const placeholders = keys.map((_, index) => `$${index + 1}`);
 
-  await db().unsafe(
+  await measureQuery(`INSERT INTO ${table}`, () => execute(
     `INSERT INTO ${table} (${keys.join(',')}) VALUES (${placeholders.join(',')})`,
     values,
-  );
+  ));
 }
 
 export async function transaction<T>(
@@ -180,9 +203,10 @@ export async function transaction<T>(
   const root = db();
 
   return root.begin(async (tx) => {
+    const context = { client: tx as unknown as DatabaseClient, queue: Promise.resolve() };
     return transactionStorage.run(
-      tx as unknown as DatabaseClient,
-      async () => await fn(),
+      context,
+      async () => { try { return await fn(); } finally { await context.queue; } },
     );
   }) as Promise<T>;
 }
