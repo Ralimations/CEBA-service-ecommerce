@@ -27,7 +27,7 @@ async function visit(page: Page, path: string) {
   assert.equal(response?.status(), 200, path);
   const body = await page.locator('body').innerText();
   assert.ok(!/A little hiccup|Application error|Internal Server Error/.test(body), path);
-  assert.ok(body.includes('Soiree Source'), path);
+  assert.ok(body.includes('SoiréeSource'), path);
   assert.equal(errors.length, 0, errors.join('\n'));
   console.log(`PASS ${path}`);
   return body;

@@ -86,11 +86,11 @@ export default async function Page({ params, searchParams }: Props) {
   if (root === 'terms' && path.length === 1)
     return (
       <main className="container page-space legal-page">
-        <span className="eyebrow">SOIREE SOURCE</span>
+        <span className="eyebrow">SOIRÉESOURCE</span>
         <h1>Terms of Service</h1>
         <p className="muted">Version 2026-10-05 · Draft for product and legal review</p>
-        <h2>Using Soiree Source</h2>
-        <p>Soiree Source connects customers with independent event service providers. Accounts must use accurate information and remain responsible for activity under their credentials.</p>
+        <h2>Using SoiréeSource</h2>
+        <p>SoiréeSource connects customers with independent event service providers. Accounts must use accurate information and remain responsible for activity under their credentials.</p>
         <h2>Bookings and simulated payments</h2>
         <p>Booking details, provider terms, dates, cancellations, and disputes are recorded in the application. Phase 1 checkout and escrow are demonstrations only; no real money is collected or transferred.</p>
         <h2>Provider content</h2>
@@ -98,7 +98,7 @@ export default async function Page({ params, searchParams }: Props) {
         <h2>Reviews and respectful use</h2>
         <p>Reviews should describe a genuine completed booking. Do not misuse another person’s account, submit harmful content, or attempt to bypass booking, verification, or access controls.</p>
         <h2>Privacy</h2>
-        <p>Soiree Source stores account, booking, communication, and audit data needed to operate the marketplace. A separate Privacy Policy will be published after the product team completes its legal review.</p>
+        <p>SoiréeSource stores account, booking, communication, and audit data needed to operate the marketplace. A separate Privacy Policy will be published after the product team completes its legal review.</p>
         <p><Link href="/register" className="btn">Create an account</Link></p>
       </main>
     );

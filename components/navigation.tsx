@@ -37,7 +37,7 @@ export function Header({ user, unread }: { user: User | null; unread: number }) 
       <div className="header-inner">
         <Link href="/" className="brand" aria-label={`${platform.name} home`}>
           <span className="brand-mark">
-            <img src="/soiree-source-logo.png" alt="Soiree Source logo" className="brand-image" />
+            <img src="/soiree-source-logo.png" alt="SoiréeSource logo" className="brand-image" />
           </span>
           <span>
             {platform.name}

@@ -1,5 +1,5 @@
 export const platform = {
-  name: 'Soiree Source',
+  name: 'SoiréeSource',
   currency: 'PHP',
   locale: 'en-PH',
   timezone: 'Asia/Manila',

@@ -10,7 +10,7 @@ import { FaqChat } from '@/components/faq-chat';
 import './globals.css';
 export const metadata: Metadata = {
     title: { default: `${platform.name} · Make it a moment`, template: `%s · ${platform.name}` },
-    description: 'Find thoughtful event services, trusted providers, and curated celebration bundles with Soiree Source.',
+    description: 'Find thoughtful event services, trusted providers, and curated celebration bundles with SoiréeSource.',
     icons: { icon: '/soiree-source-logo.png' },
 };
 export const dynamic = 'force-dynamic';
@@ -36,7 +36,7 @@ export default async function RootLayout({ children }: {
           <div>
             <Link className="brand" href="/">
               <span className="brand-mark">
-                <img src="/soiree-source-logo.png" alt="Soiree Source logo" className="brand-image" />
+                <img src="/soiree-source-logo.png" alt="SoiréeSource logo" className="brand-image" />
               </span>
               <span>{platform.name}</span>
             </Link>
