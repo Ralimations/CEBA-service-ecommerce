@@ -16,6 +16,7 @@ import { AdminBundles, AdminBundleEditor } from '@/features/admin/bundles';
 import { AdminVouchers, VoucherEditor, AdminSubscriptions, AdminPlacements, AdminDisputes, AdminEscrow, AdminSupport, } from '@/features/admin/operations';
 import { DomainError } from '@/lib/domain';
 import { eventDate } from '@/server/bookings';
+import { RouteLoadingSkeleton } from '@/components/loading-skeleton';
 import type { ReactNode } from 'react';
 type Props = {
     params: Promise<{
@@ -24,7 +25,7 @@ type Props = {
     searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 export default function Page(props: Props) {
-    return <Suspense fallback={<main className="container page-space" aria-busy="true"><p role="status">Loading your next moment…</p></main>}>
+    return <Suspense fallback={<RouteLoadingSkeleton />}>
       <RouteContent {...props}/>
     </Suspense>;
 }
