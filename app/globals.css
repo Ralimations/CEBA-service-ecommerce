@@ -499,9 +499,10 @@ progress::-moz-progress-bar {
   width: 37px;
   height: 39px;
   border-radius: 11px;
-  background: var(--forest);
+  border: 0;
+  background: transparent;
   color: var(--lime);
-  transform: rotate(-4deg);
+  transform: none;
 }
 .brand-image {
   width: 30px;
@@ -509,9 +510,6 @@ progress::-moz-progress-bar {
   object-fit: contain;
   border-radius: 8px;
   display: block;
-}
-.site-header .brand-mark {
-  transform: none;
 }
 .brand small {
   display: block;
