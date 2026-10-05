@@ -1,17 +1,19 @@
-import { test, before, after } from 'node:test';
+import { test, before, after, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
 import { migrate, closeDb, one, all, run, insert, id, now, settings } from '@/server/db';
 import { seed, day, DEMO_PASSWORD } from '@/database/seed';
 import { register, login, userFromToken, logout } from '@/server/auth';
 import { executeAction } from '@/server/actions';
-import { available, booking, bookingItems, bundles, services, provider } from '@/server/queries';
+import { available, booking, bookingItems, bookingsFor, bundles, services, provider } from '@/server/queries';
 import { validateVoucher, rewardReferral } from '@/server/vouchers';
 import { deliverReminders } from '@/server/reminders';
 import { requireRole, checkTransition, rankFor, badgeEligible, DomainError, type User, } from '@/lib/domain';
 import * as b from '@/server/bookings';
 import * as m from '@/server/management';
 if (process.env.POSTGRES_URL === undefined && existsSync('.env.local')) process.loadEnvFile('.env.local');
+assert.equal(process.env.TEST_ISOLATED, '1', 'Run npm test to use the disposable database; never run these fixtures on Supabase.');
+assert.equal(new URL(process.env.POSTGRES_URL!).hostname, '127.0.0.1');
 let admin: User, customer: User, providerUser: User;
 const user = async (id: string) => (await one<User>('SELECT * FROM users WHERE id=?', id))!;
 const freshCustomer = async (referralCode = '') => {
@@ -63,9 +65,29 @@ before(async () => {
     providerUser = (await user('provider-user-0'));
 });
 after(async () => (await closeDb()));
+// PGlite's socket bridge multiplexes one backend. Give independent cases fresh
+// client connections after intentional SQL errors; pool concurrency is tested
+// separately against the actual Supabase transaction pooler.
+afterEach(async () => (await closeDb()));
 test('PostgreSQL results use plain prototypes for React serialization', async () => {
     assert.equal(Object.getPrototypeOf((await one('SELECT id FROM users LIMIT 1'))), Object.prototype);
     assert.equal(Object.getPrototypeOf((await all('SELECT id FROM users LIMIT 1'))[0]), Object.prototype);
+});
+test('batched booking lists preserve customer and provider ownership and item snapshots', async () => {
+    const a = await freshCustomer();
+    const other = await freshCustomer();
+    const aId = await request(a, day(180));
+    const otherId = await request(other, day(181), 'package-1-0-0');
+    const mine = await bookingsFor(a);
+    assert.deepEqual(mine.map(b => b.id), [aId]);
+    assert.deepEqual(mine[0], await booking(aId, a));
+    assert.deepEqual((await bookingsFor(other)).map(b => b.id), [otherId]);
+    const supplier = await bookingsFor(providerUser);
+    assert.ok(supplier.some(b => b.id === aId));
+    assert.ok(!supplier.some(b => b.id === otherId));
+    assert.ok(supplier.every(b => b.items.some(i => i.provider_user_id === providerUser.id)));
+    const adminList = await bookingsFor(admin);
+    assert.ok(adminList.some(b => b.id === aId) && adminList.some(b => b.id === otherId));
 });
 test('visit-driven booking and featured expiry reminders are delivered only once', async () => {
     const c = (await freshCustomer());
@@ -75,7 +97,7 @@ test('visit-driven booking and featured expiry reminders are delivered only once
     (await deliverReminders(c));
     assert.equal((await one<{
         n: number;
-    }>('SELECT COUNT(*) n FROM notifications WHERE id=?', `reminder-${bookingId}-${c.id}`))!.n, 1);
+    }>('SELECT COUNT(*)::int n FROM notifications WHERE id=?', `reminder-${bookingId}-${c.id}`))!.n, 1);
     const placementId = id();
     (await insert('placements', {
         id: placementId,
@@ -88,7 +110,7 @@ test('visit-driven booking and featured expiry reminders are delivered only once
     (await deliverReminders(providerUser));
     assert.equal((await one<{
         n: number;
-    }>('SELECT COUNT(*) n FROM notifications WHERE id=?', `placement-reminder-${placementId}`))!.n, 1);
+    }>('SELECT COUNT(*)::int n FROM notifications WHERE id=?', `placement-reminder-${placementId}`))!.n, 1);
 });
 test('registration hashes passwords, persists sessions, welcomes customers, rejects public admin role', async () => {
     const c = (await freshCustomer());
@@ -350,7 +372,7 @@ test('disputes freeze handshakes; only admin resolves, refunds once, logs decisi
     (await assert.rejects(async () => (await b.adminEscrow(admin, bookingId, 'refund', 'Trying to repeat the same refund.', true))));
     assert.equal((await one<{
         n: number;
-    }>("SELECT COUNT(*) n FROM escrow_transactions WHERE booking_id=? AND type='REFUND'", bookingId))!.n, 1);
+    }>("SELECT COUNT(*)::int n FROM escrow_transactions WHERE booking_id=? AND type='REFUND'", bookingId))!.n, 1);
 });
 test('admin release requires dispute review and confirmation; audit and ledger are append-only', async () => {
     const c = (await freshCustomer());
@@ -361,8 +383,11 @@ test('admin release requires dispute review and confirmation; audit and ledger a
     (await assert.rejects(async () => (await b.adminEscrow(admin, bookingId, 'release', 'Reviewed the evidence and confirmed completion.', false))));
     (await b.adminEscrow(admin, bookingId, 'release', 'Reviewed the evidence and confirmed completion.', true));
     assert.equal((await booking(bookingId, c)).escrow_status, 'RELEASED');
+    assert.ok((await one<{n:number}>('SELECT COUNT(*)::int n FROM escrow_transactions WHERE booking_id=?', bookingId))!.n > 0);
     (await assert.rejects(async () => (await run('UPDATE escrow_transactions SET amount=0 WHERE booking_id=?', bookingId))));
+    assert.ok((await one<{n:number}>('SELECT COUNT(*)::int n FROM booking_events WHERE booking_id=?', bookingId))!.n > 0);
     (await assert.rejects(async () => (await run('DELETE FROM booking_events WHERE booking_id=?', bookingId))));
+    assert.ok((await all<{ id: string }>('SELECT id FROM audit_log LIMIT 1')).length > 0);
     (await assert.rejects(async () => (await run('DELETE FROM audit_log'))));
 });
 test('incomplete bookings cannot be reviewed and submitted scores are validated', async () => {
@@ -396,7 +421,7 @@ test('referral rewards are granted once, to both customers, after completion', a
     (await confirm(c, bookingId));
     const countBefore = (await one<{
         n: number;
-    }>("SELECT COUNT(*) n FROM vouchers WHERE code LIKE 'THANKS-%'"))!.n;
+    }>("SELECT COUNT(*)::int n FROM vouchers WHERE code LIKE 'THANKS-%'"))!.n;
     assert.equal((await one<{
         rewarded_at: string | null;
     }>('SELECT rewarded_at FROM referrals WHERE referred_id=?', c.id))!.rewarded_at, null);
@@ -407,11 +432,11 @@ test('referral rewards are granted once, to both customers, after completion', a
         .rewarded_at);
     assert.equal((await one<{
         n: number;
-    }>("SELECT COUNT(*) n FROM vouchers WHERE code LIKE 'THANKS-%'"))!.n, countBefore + 2);
+    }>("SELECT COUNT(*)::int n FROM vouchers WHERE code LIKE 'THANKS-%'"))!.n, countBefore + 2);
     (await rewardReferral(c.id));
     assert.equal((await one<{
         n: number;
-    }>("SELECT COUNT(*) n FROM vouchers WHERE code LIKE 'THANKS-%'"))!.n, countBefore + 2);
+    }>("SELECT COUNT(*)::int n FROM vouchers WHERE code LIKE 'THANKS-%'"))!.n, countBefore + 2);
 });
 test('explicit price/rating order ignores paid priority and expired plans are inactive', async () => {
     for (const sort of ['price-low', 'price-high', 'rating']) {

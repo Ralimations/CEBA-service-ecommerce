@@ -12,6 +12,9 @@ const publicRoutes = [
   '/support',
   '/login',
   '/register',
+  '/terms',
+  '/browse?date=2028-03-01&available=1',
+  '/browse?type=bundles',
 ];
 const routes: Record<string, string[]> = {
   customer: [
@@ -69,7 +72,7 @@ for (const path of publicRoutes) {
   const r = await fetch(origin + path);
   assert.equal(r.status, 200, path);
   const body = await r.text();
-  assert.ok(!body.includes('A little hiccup in the plans.'), `${path} rendered an error boundary`);
+  assert.ok(!/A little hiccup|:E\{|data-dgst=/.test(body), `${path} rendered an error boundary`);
   total++;
 }
 for (const [role, paths] of Object.entries(routes)) {
@@ -88,7 +91,7 @@ for (const [role, paths] of Object.entries(routes)) {
     assert.equal(r.status, 200, path);
     const body = await r.text();
     assert.ok(
-      !body.includes('A little hiccup in the plans.'),
+      !/A little hiccup|:E\{|data-dgst=/.test(body),
       `${path} rendered an error boundary`,
     );
     total++;
