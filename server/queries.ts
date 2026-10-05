@@ -19,12 +19,12 @@ export async function provider(providerId: string): Promise<Provider | undefined
 }
 export async function providers(): Promise<Provider[]> {
     const result = (await all<Provider>(`SELECT p.*,u.status,c.name category_name,
-    COALESCE((SELECT AVG(r.rating) FROM reviews r WHERE r.provider_id=p.id),0) rating,
+    COALESCE((SELECT AVG(r.rating) FROM reviews r WHERE r.provider_id=p.id),0)::double precision rating,
     (SELECT COUNT(*)::int FROM reviews r WHERE r.provider_id=p.id) review_count,
     (SELECT COUNT(*)::int FROM booking_items i JOIN bookings b ON b.id=i.booking_id WHERE i.provider_id=p.id AND b.status='COMPLETED') completed,
     (SELECT COUNT(DISTINCT d.id)::int FROM disputes d JOIN booking_items i ON i.booking_id=d.booking_id WHERE i.provider_id=p.id AND d.status IN ('OPEN','UNDER_REVIEW')) disputes,
-    CASE WHEN EXISTS(SELECT 1 FROM subscriptions s WHERE s.provider_id=p.id AND s.tier='VIP' AND s.status='ACTIVE' AND s.starts_at<=CURRENT_TIMESTAMP AND s.expires_at>CURRENT_TIMESTAMP) THEN 1 ELSE 0 END vip,
-    CASE WHEN EXISTS(SELECT 1 FROM placements f WHERE f.provider_id=p.id AND f.status='ACTIVE' AND f.starts_at<=CURRENT_TIMESTAMP AND f.expires_at>CURRENT_TIMESTAMP) THEN 1 ELSE 0 END featured
+    CASE WHEN EXISTS(SELECT 1 FROM subscriptions s WHERE s.provider_id=p.id AND s.tier='VIP' AND s.status='ACTIVE' AND s.starts_at::timestamptz<=CURRENT_TIMESTAMP AND s.expires_at::timestamptz>CURRENT_TIMESTAMP) THEN 1 ELSE 0 END vip,
+    CASE WHEN EXISTS(SELECT 1 FROM placements f WHERE f.provider_id=p.id AND f.status='ACTIVE' AND f.starts_at::timestamptz<=CURRENT_TIMESTAMP AND f.expires_at::timestamptz>CURRENT_TIMESTAMP) THEN 1 ELSE 0 END featured
     FROM providers p JOIN users u ON u.id=p.user_id JOIN categories c ON c.id=p.category_id`));
     const rules = (await settings());
     const badges = (await all<{
@@ -60,7 +60,7 @@ export async function services(filters: Search = {}): Promise<Service[]> {
     const providerMap = new Map((await providers()).map((p) => [p.id, p]));
     const placed = new Set((await all<{
         provider_id: string;
-    }>(`SELECT provider_id FROM placements WHERE placement=? AND status='ACTIVE' AND starts_at<=CURRENT_TIMESTAMP AND expires_at>CURRENT_TIMESTAMP`, filters.placement || (filters.category ? 'CATEGORY' : 'SEARCH'))).map((x) => x.provider_id));
+    }>(`SELECT provider_id FROM placements WHERE placement=? AND status='ACTIVE' AND starts_at::timestamptz<=CURRENT_TIMESTAMP AND expires_at::timestamptz>CURRENT_TIMESTAMP`, filters.placement || (filters.category ? 'CATEGORY' : 'SEARCH'))).map((x) => x.provider_id));
     let result = (await mapAsync((await all<Service>(`SELECT s.*,c.name category_name FROM services s JOIN categories c ON c.id=s.category_id JOIN users u ON u.id=(SELECT user_id FROM providers p WHERE p.id=s.provider_id) WHERE s.status='ACTIVE' AND s.moderated=0 AND c.active=1 AND u.status='ACTIVE' AND EXISTS(SELECT 1 FROM packages k WHERE k.service_id=s.id AND k.active=1)`)), async (s) => {
         const p = providerMap.get(s.provider_id)!;
         const minimum = (await one<{
@@ -176,7 +176,7 @@ export async function booking(bookingId: string, user: User): Promise<Booking> {
 export async function bookingsFor(user: User): Promise<Booking[]> {
     const ids = (await all<{
         id: string;
-    }>(`SELECT DISTINCT b.id FROM bookings b LEFT JOIN booking_items i ON i.booking_id=b.id LEFT JOIN providers p ON p.id=i.provider_id WHERE (?='ADMIN' OR (?='CUSTOMER' AND b.customer_id=?) OR (?='PROVIDER' AND p.user_id=?)) ORDER BY b.created_at DESC`, user.role, user.role, user.id, user.role, user.id));
+    }>(`SELECT DISTINCT b.id,b.created_at::timestamptz AS created_at FROM bookings b LEFT JOIN booking_items i ON i.booking_id=b.id LEFT JOIN providers p ON p.id=i.provider_id WHERE (?='ADMIN' OR (?='CUSTOMER' AND b.customer_id=?) OR (?='PROVIDER' AND p.user_id=?)) ORDER BY created_at DESC`, user.role, user.role, user.id, user.role, user.id));
     return (await mapAsync(ids, async (b) => (await booking(b.id, user))));
 }
 export async function reviews(providerId?: string): Promise<Review[]> {
@@ -186,7 +186,7 @@ export async function customerStats(userId: string) {
     const row = (await one<{
         completed: number;
         spending: number;
-    }>("SELECT COUNT(*) completed,COALESCE(SUM(total),0) spending FROM bookings WHERE customer_id=? AND status='COMPLETED'", userId))!;
+    }>("SELECT COUNT(*)::int completed,COALESCE(SUM(total),0)::double precision spending FROM bookings WHERE customer_id=? AND status='COMPLETED'", userId))!;
     return { ...row, rank: rankFor(row.completed, (await settings())) };
 }
 export async function dashboardStats(user: User) {

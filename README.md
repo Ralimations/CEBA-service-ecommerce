@@ -166,6 +166,19 @@ Passwords use salted scrypt; session and gate secrets are hashed in the database
 
 ## Tests
 
+For the connected Supabase project, use the hotfix smoke checks:
+
+```powershell
+npx tsx tests/postgres-audit.ts
+# With npm run dev (or npm run start) already running:
+npx tsx tests/runtime-smoke.ts --public-only
+npx tsx tests/runtime-smoke.ts
+```
+
+The audit and `--public-only` checks are read-only. The full runtime smoke creates two unique test accounts and one unpaid booking, validates consent, login/logout, session invalidation, dashboards, and provider visibility, and retains those records. It does not seed, reset, accept bookings, or make payments. Set `TEST_ORIGIN` to test a different local port; it defaults to `http://127.0.0.1:3000`.
+
+The fixture suites below require a separate test database; they are not safe rerun checks for the shared project.
+
 ```powershell
 npm run typecheck
 npm run lint
@@ -180,7 +193,7 @@ With the application running on port 3000:
 npm run test:smoke
 ```
 
-The browser suite starts and stops its own server on **3100** and uses a fresh database. Keep that port free. It automatically uses Chrome at the standard Windows installation path, otherwise install Playwright Chromium once:
+The fixture browser suite starts and stops its own server on **3100** and uses the configured database. Point it at an isolated test project and keep that port free. It automatically uses Chrome at the standard Windows installation path, otherwise install Playwright Chromium once:
 
 ```powershell
 npx playwright install chromium

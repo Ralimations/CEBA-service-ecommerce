@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { ArrowRight, CheckCircle2, Camera, ShieldCheck, Star, TrendingUp } from 'lucide-react';
-import { all, one, settings } from '@/server/db';
+import { all, one, settings, now } from '@/server/db';
 import { providerByUser, bookingsFor, dashboardStats, bundles, reviews } from '@/server/queries';
 import { activeCategories } from '@/server/auth';
 import type { User } from '@/lib/domain';
@@ -17,10 +17,10 @@ export async function ProviderOverview({ user }: {
         .slice(0, 5);
     const serviceCount = (await one<{
         n: number;
-    }>('SELECT COUNT(*) n FROM services WHERE provider_id=?', p.id))!.n;
+    }>('SELECT COUNT(*)::int n FROM services WHERE provider_id=?', p.id))!.n;
     const packageCount = (await one<{
         n: number;
-    }>('SELECT COUNT(*) n FROM packages k JOIN services s ON s.id=k.service_id WHERE s.provider_id=?', p.id))!.n;
+    }>('SELECT COUNT(*)::int n FROM packages k JOIN services s ON s.id=k.service_id WHERE s.provider_id=?', p.id))!.n;
     const calendar = !!(await one('SELECT 1 FROM availability WHERE provider_id=?', p.id));
     const steps = [
         {
@@ -460,7 +460,7 @@ export async function ProviderSubscription({ user }: {
               <td>{dateLabel(s.starts_at)}</td>
               <td>{dateLabel(s.expires_at)}</td>
               <td>
-                <Status value={s.expires_at < new Date().toISOString() ? 'EXPIRED' : s.status}/>
+                <Status value={Date.parse(s.expires_at) < Date.parse(now()) ? 'EXPIRED' : s.status}/>
               </td>
             </tr>))}
         </DataTable>
@@ -532,9 +532,9 @@ export async function ProviderPromotions({ user }: {
                 <td>{dateLabel(f.starts_at)}</td>
                 <td>{dateLabel(f.expires_at)}</td>
                 <td>
-                  <Status value={f.expires_at < new Date().toISOString()
+                  <Status value={Date.parse(f.expires_at) < Date.parse(now())
                 ? 'EXPIRED'
-                : f.starts_at > new Date().toISOString()
+                : Date.parse(f.starts_at) > Date.parse(now())
                     ? 'SCHEDULED'
                     : f.status}/>
                 </td>

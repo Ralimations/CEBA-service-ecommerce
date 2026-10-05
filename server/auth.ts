@@ -9,7 +9,7 @@ export const COOKIE = 'event_session';
 export async function userFromToken(token?: string): Promise<User | null> {
     if (!token)
         return null;
-    return ((await one<User>(`SELECT u.id,u.name,u.email,u.phone,u.role,u.status,u.referral_code,u.created_at FROM users u JOIN sessions s ON s.user_id=u.id WHERE s.token_hash=? AND s.expires_at>? AND u.status='ACTIVE'`, hashToken(token), now())) ?? null);
+    return ((await one<User>(`SELECT u.id,u.name,u.email,u.phone,u.role,u.status,u.referral_code,u.created_at FROM users u JOIN sessions s ON s.user_id=u.id WHERE s.token_hash=? AND s.expires_at::timestamptz>?::timestamptz AND u.status='ACTIVE'`, hashToken(token), now())) ?? null);
 }
 export async function currentUser() {
     return (await userFromToken((await cookies()).get(COOKIE)?.value));
@@ -79,14 +79,14 @@ export async function login(input: unknown) {
         attempts: number;
         reset_at: string;
     }>('SELECT * FROM auth_attempts WHERE key=?', key));
-    assert(!attempt || attempt.reset_at < now() || attempt.attempts < 10, 'Too many sign-in attempts. Try again in 15 minutes.', 429);
+    assert(!attempt || Date.parse(attempt.reset_at) < Date.now() || attempt.attempts < 10, 'Too many sign-in attempts. Try again in 15 minutes.', 429);
     const user = (await one<User & {
         password_hash: string;
     }>('SELECT * FROM users WHERE email=?', data.email));
     // Use the same expensive hash path for unknown accounts.
     const valid = verifyPassword(data.password, user?.password_hash ?? hashPassword('unknown-account-timing'));
     if (!user || !valid) {
-        (await run(`INSERT INTO auth_attempts(key,attempts,reset_at) VALUES(?,1,?) ON CONFLICT(key) DO UPDATE SET attempts=CASE WHEN reset_at<? THEN 1 ELSE attempts+1 END, reset_at=CASE WHEN reset_at<? THEN excluded.reset_at ELSE reset_at END`, key, new Date(Date.now() + 900000).toISOString(), now(), now()));
+        (await run(`INSERT INTO auth_attempts(key,attempts,reset_at) VALUES(?,1,?) ON CONFLICT(key) DO UPDATE SET attempts=CASE WHEN auth_attempts.reset_at::timestamptz<?::timestamptz THEN 1 ELSE auth_attempts.attempts+1 END, reset_at=CASE WHEN auth_attempts.reset_at::timestamptz<?::timestamptz THEN excluded.reset_at ELSE auth_attempts.reset_at END`, key, new Date(Date.now() + 900000).toISOString(), now(), now()));
         assert(false, 'Email or password is incorrect.', 401);
     }
     assert(user.status === 'ACTIVE', 'This account is suspended. Contact support.', 403);

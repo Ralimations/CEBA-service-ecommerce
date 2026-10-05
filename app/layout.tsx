@@ -23,7 +23,7 @@ export default async function RootLayout({ children }: {
     const unread = user
         ? (await one<{
             n: number;
-        }>('SELECT COUNT(*) n FROM notifications WHERE user_id=? AND read_at IS NULL', user.id))!.n
+        }>('SELECT COUNT(*)::int n FROM notifications WHERE user_id=? AND read_at IS NULL', user.id))!.n
         : 0;
     return (<html lang="en" data-scroll-behavior="smooth">
       <body>

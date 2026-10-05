@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Plus } from 'lucide-react';
-import { all, one, settings } from '@/server/db';
+import { all, one, settings, now } from '@/server/db';
 import { providers, bookingsFor } from '@/server/queries';
 import { activeCategories } from '@/server/auth';
 import type { User } from '@/lib/domain';
@@ -38,7 +38,7 @@ export async function AdminVouchers() {
                 <small>Until {dateLabel(v.expires_at)}</small>
               </td>
               <td>
-                <Status value={v.expires_at < new Date().toISOString()
+                <Status value={Date.parse(v.expires_at) < Date.parse(now())
                 ? 'EXPIRED'
                 : v.active
                     ? 'ACTIVE'
@@ -177,7 +177,7 @@ export async function AdminSubscriptions() {
               <td>{dateLabel(s.starts_at)}</td>
               <td>{dateLabel(s.expires_at)}</td>
               <td>
-                <Status value={s.expires_at < new Date().toISOString() ? 'EXPIRED' : s.status}/>
+                <Status value={Date.parse(s.expires_at) < Date.parse(now()) ? 'EXPIRED' : s.status}/>
               </td>
               <td>{s.amount === null ? 'Seeded demo' : money(s.amount)}</td>
             </tr>))}
@@ -237,9 +237,9 @@ export async function AdminPlacements() {
                 <small>until {dateLabel(f.expires_at)}</small>
               </td>
               <td>
-                <Status value={f.expires_at < new Date().toISOString()
+                <Status value={Date.parse(f.expires_at) < Date.parse(now())
                 ? 'EXPIRED'
-                : f.starts_at > new Date().toISOString()
+                : Date.parse(f.starts_at) > Date.parse(now())
                     ? 'SCHEDULED'
                     : f.status}/>
               </td>
