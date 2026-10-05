@@ -15,7 +15,6 @@
     "test": "tsx --test tests/*.test.ts",
     "db:migrate": "tsx database/manage.ts migrate",
     "db:seed": "tsx database/manage.ts seed",
-    "db:reset": "tsx database/manage.ts reset",
     "test:smoke": "tsx tests/smoke.ts",
     "test:e2e": "playwright test",
     "test:serve": "tsx tests/serve.ts",
@@ -25,7 +24,6 @@
   "dependencies": {
     "lucide-react": "1.52.0",
     "next": "16.3.8",
-    "pg": "8.23.1",
     "postgres": "^3.4.9",
     "qrcode": "1.5.4",
     "react": "19.3.0",

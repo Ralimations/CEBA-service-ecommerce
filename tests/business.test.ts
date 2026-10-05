@@ -1,5 +1,6 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
+import { existsSync } from 'node:fs';
 import { migrate, closeDb, one, all, run, insert, id, now, settings } from '@/server/db';
 import { seed, day, DEMO_PASSWORD } from '@/database/seed';
 import { register, login, userFromToken, logout } from '@/server/auth';
@@ -10,7 +11,7 @@ import { deliverReminders } from '@/server/reminders';
 import { requireRole, checkTransition, rankFor, badgeEligible, DomainError, type User, } from '@/lib/domain';
 import * as b from '@/server/bookings';
 import * as m from '@/server/management';
-process.env.DATABASE_PATH = ':memory:';
+if (process.env.POSTGRES_URL === undefined && existsSync('.env.local')) process.loadEnvFile('.env.local');
 let admin: User, customer: User, providerUser: User;
 const user = async (id: string) => (await one<User>('SELECT * FROM users WHERE id=?', id))!;
 const freshCustomer = async (referralCode = '') => {
@@ -20,6 +21,7 @@ const freshCustomer = async (referralCode = '') => {
         password: DEMO_PASSWORD,
         confirmPassword: DEMO_PASSWORD,
         role: 'CUSTOMER',
+        termsAccepted: true,
         referralCode,
     }));
     return (await userFromToken(result.token))!;
@@ -61,7 +63,7 @@ before(async () => {
     providerUser = (await user('provider-user-0'));
 });
 after(async () => (await closeDb()));
-test('SQLite results use plain prototypes for React serialization', async () => {
+test('PostgreSQL results use plain prototypes for React serialization', async () => {
     assert.equal(Object.getPrototypeOf((await one('SELECT id FROM users LIMIT 1'))), Object.prototype);
     assert.equal(Object.getPrototypeOf((await all('SELECT id FROM users LIMIT 1'))[0]), Object.prototype);
 });
@@ -119,11 +121,33 @@ test('provider registration creates business profile and no customer welcome vou
         description: 'A thoughtful test provider business.',
         phone: '09170001111',
         categoryId: 'photography',
+        termsAccepted: true,
     }));
     const p = (await userFromToken(session.token))!;
     assert.equal(p.role, 'PROVIDER');
     assert.ok((await one('SELECT id FROM providers WHERE user_id=?', p.id)));
     assert.equal((await one('SELECT 1 FROM voucher_wallet WHERE user_id=?', p.id)), undefined);
+});
+test('customer and provider registrations require and record the Terms version', async () => {
+    await assert.rejects(() => register({
+        name: 'No Terms', email: `${id()}@terms.local`, password: DEMO_PASSWORD,
+        confirmPassword: DEMO_PASSWORD, role: 'CUSTOMER',
+    }));
+    await assert.rejects(() => register({
+        name: 'No Terms Provider', email: `${id()}@terms.local`, password: DEMO_PASSWORD,
+        confirmPassword: DEMO_PASSWORD, role: 'PROVIDER', businessName: 'Terms Studio',
+        description: 'A provider used to verify terms validation.', phone: '09170009999', categoryId: 'photography',
+    }));
+    const accepted = await register({
+        name: 'Terms Customer', email: `${id()}@terms.local`, password: DEMO_PASSWORD,
+        confirmPassword: DEMO_PASSWORD, role: 'CUSTOMER', termsAccepted: true,
+    });
+    const row = await one<{ terms_accepted_at: string; terms_version: string }>(
+        'SELECT terms_accepted_at,terms_version FROM users WHERE id=(SELECT user_id FROM sessions WHERE token_hash=?)',
+        (await import('@/server/security')).hashToken(accepted.token),
+    );
+    assert.ok(row?.terms_accepted_at);
+    assert.equal(row?.terms_version, '2026-10-05');
 });
 test('server role enforcement and ownership reject cross-role and cross-provider access', async () => {
     assert.throws(() => requireRole(customer, 'ADMIN'), (e: unknown) => e instanceof DomainError && e.status === 403);

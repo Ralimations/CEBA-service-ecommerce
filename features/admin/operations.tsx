@@ -10,7 +10,7 @@ import { Heading, Panel, DataTable, Field, Status, Empty } from '@/components/ui
 import { ActionForm, ActionButton } from '@/components/action-form';
 import { money, dateLabel, today, human } from '@/lib/format';
 export async function AdminVouchers() {
-    const list = (await all<Voucher>('SELECT * FROM vouchers ORDER BY rowid DESC'));
+    const list = (await all<Voucher>('SELECT * FROM vouchers ORDER BY id DESC'));
     return (<>
       <Heading title="A little generosity, well managed." description="Create welcome gifts, seasonal offers, and membership rewards." action={<Link className="btn" href="/admin/vouchers/new">
             <Plus size={17}/>

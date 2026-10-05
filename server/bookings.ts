@@ -356,7 +356,7 @@ export async function verifyHandshake(user: User, itemId: string, gate: 'START' 
         expires_at: string;
         attempts: number;
         used_at: string | null;
-    }>('SELECT * FROM handshake_tokens WHERE booking_item_id=? AND gate=? ORDER BY created_at DESC,rowid DESC LIMIT 1', itemId, gate));
+    }>('SELECT * FROM handshake_tokens WHERE booking_item_id=? AND gate=? ORDER BY created_at DESC,id DESC LIMIT 1', itemId, gate));
     assert(token && !token.used_at && token.expires_at > now() && token.attempts < 5, 'This code has expired, was used, or is locked. Ask for a new code.');
     assert(token.issuer_id !== user.id, 'The code must be verified by the other party.', 403);
     if (hashToken(input.trim().toUpperCase()) !== token.token_hash) {

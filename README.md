@@ -1,4 +1,4 @@
-# Event Marketplace
+# Soiree Source
 
 ## Project
 
@@ -6,13 +6,13 @@ A local event services marketplace for customers, providers, and administrators.
 
 ## Phase
 
-**Phase 1 Functional MVP.** This is a working application with SQLite persistence, server-side authorization, and tested workflows. Payment, subscription, promotion, refund, and earnings amounts are simulations. No real money is collected or transferred.
+**Phase 1 Functional MVP.** This is a working application with Supabase PostgreSQL persistence, server-side authorization, and tested workflows. Payment, subscription, promotion, refund, and earnings amounts are simulations. No real money is collected or transferred.
 
 See [PHASE1_STATUS.md](PHASE1_STATUS.md) for the feature-by-feature status and assumptions, and [CHANGELOG_PHASE1.md](CHANGELOG_PHASE1.md) for major changes.
 
 ## Installation
 
-Requirements: **Node.js 24 or newer** and npm. No separate database server, SQLite installation, Docker, or API keys are required. Run commands from the project directory.
+Requirements: **Node.js 24 or newer** and npm. A Supabase project and server-only PostgreSQL connection string are required. Run commands from the project directory.
 
 ```powershell
 npm ci
@@ -41,7 +41,7 @@ Use `.env` for configuration shared by the web application and database CLI. Env
 
 | Variable                   | Default                                | Purpose                                                                                                           |
 | -------------------------- | -------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `DATABASE_PATH`            | `./data/marketplace.sqlite`            | Persistent SQLite database, relative to the project directory.                                                    |
+| `POSTGRES_URL`            | `postgresql://...pooler.supabase.com:6543/postgres`            | Server-only Supabase PostgreSQL connection string.                                                    |
 | `APP_ORIGIN`               | `http://localhost:3000` in the example | Allowed browser origin for JSON mutations. Change it when changing the server port or host.                       |
 | `COOKIE_SECURE`            | `false`                                | Set to `true` only when the application is served through HTTPS.                                                  |
 | `DEMO_HANDSHAKE_ANYTIME`   | `true`                                 | Lets demo bookings complete before their event date. Set to `false` to require the event date before either gate. |
@@ -49,13 +49,13 @@ Use `.env` for configuration shared by the web application and database CLI. Env
 | `TEST_ORIGIN`              | `http://127.0.0.1:3000`                | Origin used by the route smoke checks.                                                                            |
 | `PLAYWRIGHT_CHROMIUM_PATH` | Auto-detected                          | Optional Chrome/Chromium executable for browser tests.                                                            |
 
-Application identity, locale, default policy values, and recommendation weights live in `config/platform.ts`. Admin settings persist policy overrides in SQLite. `.env`, local databases, generated artifacts, and dependencies are ignored by Git.
+Application identity, locale, default policy values, and recommendation weights live in `config/platform.ts`. Admin settings persist policy overrides in PostgreSQL. `.env`, local databases, generated artifacts, and dependencies are ignored by Git.
 
 ## Database
 
-SQLite uses Node's built-in `node:sqlite` driver with a small typed, parameterized repository layer instead of an ORM. This avoids native dependency installation while keeping domain rules separate from page rendering. Foreign keys, status constraints, unique reservations, write transactions, and an append-only financial/event audit trail protect the core workflow.
+Supabase PostgreSQL is accessed through Postgres.js with a small typed, parameterized repository layer instead of an ORM. The app uses `POSTGRES_URL`, which should be a Supabase pooler connection string for Vercel. Foreign keys, status constraints, unique reservations, write transactions, and an append-only financial/event audit trail protect the core workflow.
 
-`database/schema.sql` contains the initial idempotent migration and schema version marker. `database/seed.ts` creates relative-date demo scenarios, including 10 provider businesses, 20 services, 60 packages, reviews, two bundles, vouchers, and bookings in different lifecycle states. Seed data is fictional. Seeding skips databases that already contain users; it does not merge fixtures into existing data.
+`database/schema.postgres.sql` contains the initial idempotent migration and schema version marker. `database/seed.ts` creates relative-date demo scenarios, including 10 provider businesses, 20 services, 60 packages, reviews, two bundles, vouchers, and bookings in different lifecycle states. Seed data is fictional. Seeding skips databases that already contain users; it does not merge fixtures into existing data.
 
 | Data group             | Tables                                                                                                                             |
 | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
@@ -70,11 +70,11 @@ Money is stored in integer centavos. Booking items snapshot package details, sup
 
 ### Reset and seed
 
-Stop the application before resetting its database. **Reset deletes the selected local database and its WAL/SHM files, then recreates demo data.** The reset command only accepts paths inside this project's `data` directory.
+There is intentionally no production reset command. Run migrations and seed only against an explicitly selected development database; seeding skips databases that already contain users.
 
 ```powershell
-npm run db:reset
-npm run dev
+npm run db:migrate
+npm run db:seed
 ```
 
 Use these separately when preserving existing records:
@@ -84,7 +84,7 @@ npm run db:migrate
 npm run db:seed
 ```
 
-To back up a database, stop its server and copy the SQLite file together with any remaining `-wal` and `-shm` companions. Browser tests create their own `data/browser-test-*.sqlite` files and never reset the normal demo database.
+Backups, point-in-time recovery, and database monitoring are managed in the Supabase project. The migration and seed commands are intentionally idempotent; there is no production reset command.
 
 ## Demo accounts
 
@@ -160,7 +160,7 @@ tests/        Domain integration tests, route smoke checks, browser workflows
 public/       Local demo photography and favicon
 ```
 
-Next.js 16, React 19, TypeScript, and Tailwind 4/PostCSS provide the application shell. Most views render on the server; forms, navigation, FAQ, and QR interactions are client components. A guarded catch-all page maps stable product URLs to domain page modules. API handlers validate origin and inputs, then call domain functions that enforce authorization again. SQLite transactions cover booking acceptance, voucher reservations/redemption, payment, gate verification, and dispute resolution.
+Next.js 16, React 19, TypeScript, and Tailwind 4/PostCSS provide the application shell. Most views render on the server; forms, navigation, FAQ, and QR interactions are client components. A guarded catch-all page maps stable product URLs to domain page modules. API handlers validate origin and inputs, then call domain functions that enforce authorization again. PostgreSQL transactions cover booking acceptance, voucher reservations/redemption, payment, gate verification, and dispute resolution.
 
 Passwords use salted scrypt; session and gate secrets are hashed in the database. Cookies are HttpOnly and SameSite=Lax. Login attempts are throttled. Suspended accounts lose access. Audit and escrow rows cannot be updated or deleted through normal SQL statements because of append-only triggers.
 
@@ -189,7 +189,7 @@ npm run test:e2e
 
 On Windows with the detected Chrome installation, the install step is unnecessary. Test runs use a fresh browser context, not an existing signed-in browser profile. Generated screenshots are in `artifacts/`; failures retain Playwright traces under `test-results/`.
 
-Verified during implementation: **21 domain integration tests, six browser workflows, 53 public/authenticated route checks against development and production servers**, type checking, ESLint, formatting, and a production build. Browser coverage includes 1440px desktop, 768px tablet, and 390px mobile layouts. The reset/migrate/seed commands were also exercised on an isolated SQLite file.
+Verified during implementation: PostgreSQL migration and seed, terms acceptance for customer and provider registration, type checking, ESLint, and a production build. The full integration suite requires an isolated Supabase test database because it creates bookings, vouchers, and accounts; running it against a shared seeded project will leave test fixtures behind and cause duplicate-key failures on reruns.
 
 ## Known limitations
 
@@ -200,6 +200,6 @@ Verified during implementation: **21 domain integration tests, six browser workf
 - Portfolios use local assets or entered image URLs; direct file uploads and media storage are not implemented. Provider local verification is an admin review flag, not external KYC.
 - Analytics are basic database aggregates. VIP has visibility, portfolio capacity, and placement discounts; advanced VIP analytics are deferred.
 - PWA installation/offline behavior is **WIP / Requires Product Clarification**. No service worker or installable app is claimed.
-- A single local SQLite database is suitable for this prototype. Multi-instance hosting, operational migrations beyond version 1, backups, monitoring, stronger anti-abuse controls, and production deployment need further work.
+- Supabase free-tier projects can pause after inactivity and have resource limits. Production operations still need backups, monitoring, stronger anti-abuse controls, and a dedicated test database.
 
 All demo businesses, people, reviews, and transactions are fictional. Image source references are recorded in [public/images/README.md](public/images/README.md).

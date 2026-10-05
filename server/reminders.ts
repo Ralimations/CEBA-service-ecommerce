@@ -13,7 +13,7 @@ export async function deliverReminders(user: User) {
         event_date: string;
     }>(`SELECT DISTINCT b.id,b.title,b.event_date FROM bookings b LEFT JOIN booking_items i ON i.booking_id=b.id LEFT JOIN providers p ON p.id=i.provider_id WHERE b.status='CONFIRMED' AND b.event_date BETWEEN ? AND ? AND (b.customer_id=? OR p.user_id=?)`, today(), nextDay, user.id, user.id));
     for (const b of upcoming)
-        (await run('INSERT OR IGNORE INTO notifications(id,user_id,title,body,href) VALUES(?,?,?,?,?)', `reminder-${b.id}-${user.id}`, user.id, 'Your celebration is almost here', `${b.title} is scheduled for ${b.event_date}. Get your check-in code ready.`, `/bookings/${b.id}`));
+        (await run('INSERT INTO notifications(id,user_id,title,body,href) VALUES(?,?,?,?,?) ON CONFLICT DO NOTHING', `reminder-${b.id}-${user.id}`, user.id, 'Your celebration is almost here', `${b.title} is scheduled for ${b.event_date}. Get your check-in code ready.`, `/bookings/${b.id}`));
     if (user.role === 'PROVIDER') {
         const limit = new Date(Date.now() + 2 * 86400000).toISOString();
         const expiring = (await all<{
@@ -22,6 +22,6 @@ export async function deliverReminders(user: User) {
             expires_at: string;
         }>("SELECT f.* FROM placements f JOIN providers p ON p.id=f.provider_id WHERE p.user_id=? AND f.status='ACTIVE' AND f.expires_at>? AND f.expires_at<=?", user.id, now(), limit));
         for (const f of expiring)
-            (await run('INSERT OR IGNORE INTO notifications(id,user_id,title,body,href) VALUES(?,?,?,?,?)', `placement-reminder-${f.id}`, user.id, 'Your featured placement ends soon', `${f.placement.toLowerCase()} visibility expires on ${f.expires_at.slice(0, 10)}.`, '/provider/promotions'));
+            (await run('INSERT INTO notifications(id,user_id,title,body,href) VALUES(?,?,?,?,?) ON CONFLICT DO NOTHING', `placement-reminder-${f.id}`, user.id, 'Your featured placement ends soon', `${f.placement.toLowerCase()} visibility expires on ${f.expires_at.slice(0, 10)}.`, '/provider/promotions'));
     }
 }

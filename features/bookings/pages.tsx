@@ -60,7 +60,7 @@ export async function BookingDetail({ user, bookingId }: {
         detail: string;
         created_at: string;
         actor: string;
-    }>('SELECT e.*,u.name actor FROM booking_events e JOIN users u ON u.id=e.actor_id WHERE e.booking_id=? ORDER BY e.created_at,e.rowid', b.id));
+    }>('SELECT e.*,u.name actor FROM booking_events e JOIN users u ON u.id=e.actor_id WHERE e.booking_id=? ORDER BY e.created_at,e.id', b.id));
     const ledger = (await all<{
         id: string;
         type: string;
@@ -69,7 +69,7 @@ export async function BookingDetail({ user, bookingId }: {
         note: string;
         created_at: string;
         provider_id: string | null;
-    }>('SELECT * FROM escrow_transactions WHERE booking_id=? ORDER BY created_at,rowid', b.id)).filter((t) => user.role !== 'PROVIDER' || !t.provider_id || t.provider_id === mine?.provider_id);
+    }>('SELECT * FROM escrow_transactions WHERE booking_id=? ORDER BY created_at,id', b.id)).filter((t) => user.role !== 'PROVIDER' || !t.provider_id || t.provider_id === mine?.provider_id);
     return (<>
       <div className="breadcrumbs">
         <Link href={admin ? '/admin/bookings' : customer ? '/bookings' : '/provider/bookings'}>

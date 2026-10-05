@@ -111,6 +111,13 @@ export function AuthForm({
                 <input name="referralCode" placeholder="A little celebration shared" />
               </Field>
             )}
+            <label className="check-label terms-check">
+              <input type="checkbox" name="termsAccepted" value="true" required />
+              <span>
+                I have read and agree to the{' '}
+                <Link href="/terms" target="_blank">Terms of Service</Link>.
+              </span>
+            </label>
           </>
         ) : (
           <label className="check-label">

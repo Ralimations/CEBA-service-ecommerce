@@ -20,11 +20,11 @@ export async function provider(providerId: string): Promise<Provider | undefined
 export async function providers(): Promise<Provider[]> {
     const result = (await all<Provider>(`SELECT p.*,u.status,c.name category_name,
     COALESCE((SELECT AVG(r.rating) FROM reviews r WHERE r.provider_id=p.id),0) rating,
-    (SELECT COUNT(*) FROM reviews r WHERE r.provider_id=p.id) review_count,
-    (SELECT COUNT(*) FROM booking_items i JOIN bookings b ON b.id=i.booking_id WHERE i.provider_id=p.id AND b.status='COMPLETED') completed,
-    (SELECT COUNT(DISTINCT d.id) FROM disputes d JOIN booking_items i ON i.booking_id=d.booking_id WHERE i.provider_id=p.id AND d.status IN ('OPEN','UNDER_REVIEW')) disputes,
-    EXISTS(SELECT 1 FROM subscriptions s WHERE s.provider_id=p.id AND s.tier='VIP' AND s.status='ACTIVE' AND s.starts_at<=strftime('%Y-%m-%dT%H:%M:%fZ','now') AND s.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now')) vip,
-    EXISTS(SELECT 1 FROM placements f WHERE f.provider_id=p.id AND f.status='ACTIVE' AND f.starts_at<=strftime('%Y-%m-%dT%H:%M:%fZ','now') AND f.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now')) featured
+    (SELECT COUNT(*)::int FROM reviews r WHERE r.provider_id=p.id) review_count,
+    (SELECT COUNT(*)::int FROM booking_items i JOIN bookings b ON b.id=i.booking_id WHERE i.provider_id=p.id AND b.status='COMPLETED') completed,
+    (SELECT COUNT(DISTINCT d.id)::int FROM disputes d JOIN booking_items i ON i.booking_id=d.booking_id WHERE i.provider_id=p.id AND d.status IN ('OPEN','UNDER_REVIEW')) disputes,
+    CASE WHEN EXISTS(SELECT 1 FROM subscriptions s WHERE s.provider_id=p.id AND s.tier='VIP' AND s.status='ACTIVE' AND s.starts_at<=CURRENT_TIMESTAMP AND s.expires_at>CURRENT_TIMESTAMP) THEN 1 ELSE 0 END vip,
+    CASE WHEN EXISTS(SELECT 1 FROM placements f WHERE f.provider_id=p.id AND f.status='ACTIVE' AND f.starts_at<=CURRENT_TIMESTAMP AND f.expires_at>CURRENT_TIMESTAMP) THEN 1 ELSE 0 END featured
     FROM providers p JOIN users u ON u.id=p.user_id JOIN categories c ON c.id=p.category_id`));
     const rules = (await settings());
     const badges = (await all<{
@@ -60,7 +60,7 @@ export async function services(filters: Search = {}): Promise<Service[]> {
     const providerMap = new Map((await providers()).map((p) => [p.id, p]));
     const placed = new Set((await all<{
         provider_id: string;
-    }>(`SELECT provider_id FROM placements WHERE placement=? AND status='ACTIVE' AND starts_at<=strftime('%Y-%m-%dT%H:%M:%fZ','now') AND expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now')`, filters.placement || (filters.category ? 'CATEGORY' : 'SEARCH'))).map((x) => x.provider_id));
+    }>(`SELECT provider_id FROM placements WHERE placement=? AND status='ACTIVE' AND starts_at<=CURRENT_TIMESTAMP AND expires_at>CURRENT_TIMESTAMP`, filters.placement || (filters.category ? 'CATEGORY' : 'SEARCH'))).map((x) => x.provider_id));
     let result = (await mapAsync((await all<Service>(`SELECT s.*,c.name category_name FROM services s JOIN categories c ON c.id=s.category_id JOIN users u ON u.id=(SELECT user_id FROM providers p WHERE p.id=s.provider_id) WHERE s.status='ACTIVE' AND s.moderated=0 AND c.active=1 AND u.status='ACTIVE' AND EXISTS(SELECT 1 FROM packages k WHERE k.service_id=s.id AND k.active=1)`)), async (s) => {
         const p = providerMap.get(s.provider_id)!;
         const minimum = (await one<{

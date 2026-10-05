@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { all, one, run, insert, id, now, transaction, notify, admins } from './db';
 import { hashPassword, verifyPassword, hashToken, sessionToken } from './security';
 import { assert, type User, type Role } from '@/lib/domain';
+import { CURRENT_TERMS_VERSION } from '@/config/platform';
 export const COOKIE = 'event_session';
 export async function userFromToken(token?: string): Promise<User | null> {
     if (!token)
@@ -47,6 +48,7 @@ export const registerSchema = z
     description: z.string().max(3000).default(''),
     categoryId: z.string().default(''),
     referralCode: z.string().max(30).default(''),
+    termsAccepted: z.literal(true, { error: 'You must accept the Terms of Service.' }),
 })
     .refine((x) => x.password === x.confirmPassword, {
     path: ['confirmPassword'],
@@ -109,6 +111,8 @@ export async function register(input: unknown) {
             role: data.role,
             phone: data.phone,
             referral_code: data.role === 'CUSTOMER' ? `EV${id().slice(0, 8).toUpperCase()}` : null,
+            terms_accepted_at: now(),
+            terms_version: CURRENT_TERMS_VERSION,
         }));
         if (data.role === 'PROVIDER') {
             (await insert('providers', {
@@ -142,4 +146,4 @@ export const activeCategories = async () => (await all<{
     id: string;
     name: string;
     icon: string;
-}>('SELECT * FROM categories WHERE active=1 ORDER BY rowid'));
+}>('SELECT * FROM categories WHERE active=1 ORDER BY id'));

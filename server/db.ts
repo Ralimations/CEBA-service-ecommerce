@@ -51,7 +51,7 @@ export function db(): DatabaseClient {
 }
 
 /**
- * The original application uses SQLite-style `?` placeholders.
+ * The repository keeps its concise `?` placeholders.
  *
  * PostgreSQL expects:
  *
@@ -61,6 +61,7 @@ export function db(): DatabaseClient {
  * rewriting every placeholder.
  */
 function postgresQuery(sql: string) {
+  sql = sql.replace(/CURRENT_TIMESTAMP/g, 'CURRENT_TIMESTAMP::text');
   let index = 0;
   let singleQuoted = false;
   let doubleQuoted = false;
@@ -106,7 +107,7 @@ export async function migrate() {
 
   if (!existsSync(postgresSchema)) {
     throw new Error(
-      'database/schema.postgres.sql was not found. The PostgreSQL schema must be used instead of the old SQLite schema.',
+      'database/schema.postgres.sql was not found. The PostgreSQL schema is required.',
     );
   }
 

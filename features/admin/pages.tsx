@@ -44,7 +44,7 @@ export async function AdminOverview({ user }: {
             },
             {
                 label: 'Active placements',
-                value: (await scalar("SELECT COUNT(*) FROM placements WHERE status='ACTIVE' AND starts_at<=strftime('%Y-%m-%dT%H:%M:%fZ','now') AND expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now')")),
+                value: (await scalar("SELECT COUNT(*) FROM placements WHERE status='ACTIVE' AND starts_at<=CURRENT_TIMESTAMP AND expires_at>CURRENT_TIMESTAMP")),
             },
             {
                 label: 'Support queue',
@@ -223,7 +223,7 @@ export async function AdminCategories() {
         id: string;
         name: string;
         active: number;
-    }>('SELECT * FROM categories ORDER BY rowid'));
+    }>('SELECT * FROM categories ORDER BY id'));
     return (<>
       <Heading title="A place for every kind of talent." description="Manage service categories. Deactivated categories disappear from discovery."/>
       <Panel>

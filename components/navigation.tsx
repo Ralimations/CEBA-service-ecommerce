@@ -3,7 +3,6 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 import {
-  Sparkles,
   Menu,
   X,
   Bell,
@@ -38,7 +37,7 @@ export function Header({ user, unread }: { user: User | null; unread: number }) 
       <div className="header-inner">
         <Link href="/" className="brand" aria-label={`${platform.name} home`}>
           <span className="brand-mark">
-            <Sparkles size={23} />
+            <img src="/soiree-source-logo.png" alt="Soiree Source logo" className="brand-image" />
           </span>
           <span>
             {platform.name}
@@ -189,3 +188,4 @@ export function Sidebar({ user }: { user: User }) {
     </aside>
   );
 }
+

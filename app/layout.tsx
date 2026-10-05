@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { Sparkles, ArrowUpRight } from 'lucide-react';
+import { ArrowUpRight } from 'lucide-react';
 import { platform } from '@/config/platform';
 import { currentUser } from '@/server/auth';
 import { one } from '@/server/db';
@@ -10,8 +10,8 @@ import { FaqChat } from '@/components/faq-chat';
 import './globals.css';
 export const metadata: Metadata = {
     title: { default: `${platform.name} · Make it a moment`, template: `%s · ${platform.name}` },
-    description: 'Find thoughtful event services, trusted providers, and curated celebration bundles. A functional local event marketplace.',
-    icons: { icon: '/favicon.svg' },
+    description: 'Find thoughtful event services, trusted providers, and curated celebration bundles with Soiree Source.',
+    icons: { icon: '/soiree-source-logo.png' },
 };
 export const dynamic = 'force-dynamic';
 export default async function RootLayout({ children }: {
@@ -36,7 +36,7 @@ export default async function RootLayout({ children }: {
           <div>
             <Link className="brand" href="/">
               <span className="brand-mark">
-                <Sparkles size={21}/>
+                <img src="/soiree-source-logo.png" alt="Soiree Source logo" className="brand-image" />
               </span>
               <span>{platform.name}</span>
             </Link>
@@ -68,3 +68,4 @@ export default async function RootLayout({ children }: {
       </body>
     </html>);
 }
+

@@ -1,8 +1,8 @@
 import { spawn } from 'node:child_process';
-import { resolve } from 'node:path';
+import { existsSync } from 'node:fs';
 import { migrate, closeDb } from '@/server/db';
 import { seed } from '@/database/seed';
-process.env.DATABASE_PATH = resolve('data', `browser-test-${Date.now()}.sqlite`);
+if (process.env.POSTGRES_URL === undefined && existsSync('.env.local')) process.loadEnvFile('.env.local');
 process.env.NEXT_DIST_DIR = '.next-test';
 process.env.APP_ORIGIN = 'http://127.0.0.1:3100';
 (await migrate());
