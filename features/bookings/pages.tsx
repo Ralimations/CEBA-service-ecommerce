@@ -3,118 +3,74 @@ import { CalendarDays, MapPin, Users, Phone, ArrowRight, ShieldCheck } from 'luc
 import { booking, bookingsFor } from '@/server/queries';
 import { all } from '@/server/db';
 import type { User } from '@/lib/domain';
-import {
-  Badge,
-  Empty,
-  Field,
-  Heading,
-  Panel,
-  Status,
-  Inclusions,
-  DataTable,
-  TrustNote,
-} from '@/components/ui';
+import { Badge, Empty, Field, Heading, Panel, Status, Inclusions, DataTable, TrustNote, } from '@/components/ui';
 import { ActionForm, ActionButton } from '@/components/action-form';
 import { BookingCard } from '@/components/cards';
 import { money, dateLabel, human, today } from '@/lib/format';
 import { Handshake } from './handshake';
-export function BookingList({
-  user,
-  status = '',
-  base = '/bookings',
-}: {
-  user: User;
-  status?: string;
-  base?: string;
+export async function BookingList({ user, status = '', base = '/bookings', }: {
+    user: User;
+    status?: string;
+    base?: string;
 }) {
-  let list = bookingsFor(user);
-  if (status === 'UPCOMING')
-    list = list.filter(
-      (b) => b.event_date >= today() && !['CANCELLED', 'COMPLETED'].includes(b.status),
-    );
-  else if (status) list = list.filter((b) => b.status === status);
-  return (
-    <>
-      <Heading
-        eyebrow={
-          user.role === 'CUSTOMER' ? 'EVERY MOMENT, IN ONE PLACE' : 'KEEP THE DETAILS TOGETHER'
-        }
-        title={user.role === 'CUSTOMER' ? 'Your celebrations' : 'Bookings'}
-        description="From the first request to the final thank-you."
-        action={
-          user.role === 'CUSTOMER' ? (
-            <Link className="btn" href="/browse">
+    let list = (await bookingsFor(user));
+    if (status === 'UPCOMING')
+        list = list.filter((b) => b.event_date >= today() && !['CANCELLED', 'COMPLETED'].includes(b.status));
+    else if (status)
+        list = list.filter((b) => b.status === status);
+    return (<>
+      <Heading eyebrow={user.role === 'CUSTOMER' ? 'EVERY MOMENT, IN ONE PLACE' : 'KEEP THE DETAILS TOGETHER'} title={user.role === 'CUSTOMER' ? 'Your celebrations' : 'Bookings'} description="From the first request to the final thank-you." action={user.role === 'CUSTOMER' ? (<Link className="btn" href="/browse">
               Plan something special
-              <ArrowRight size={16} />
-            </Link>
-          ) : undefined
-        }
-      />
+              <ArrowRight size={16}/>
+            </Link>) : undefined}/>
       <nav className="tabs" aria-label="Booking status">
         {[
-          '',
-          'PENDING',
-          'ACCEPTED',
-          'CONFIRMED',
-          'UPCOMING',
-          'IN_PROGRESS',
-          'COMPLETED',
-          'CANCELLED',
-          'DISPUTED',
-        ].map((s) => (
-          <Link
-            key={s}
-            className={status === s ? 'active' : ''}
-            href={`${base}${s ? `?status=${s}` : ''}`}
-          >
+            '',
+            'PENDING',
+            'ACCEPTED',
+            'CONFIRMED',
+            'UPCOMING',
+            'IN_PROGRESS',
+            'COMPLETED',
+            'CANCELLED',
+            'DISPUTED',
+        ].map((s) => (<Link key={s} className={status === s ? 'active' : ''} href={`${base}${s ? `?status=${s}` : ''}`}>
             {s ? human(s) : 'All bookings'}
-          </Link>
-        ))}
+          </Link>))}
       </nav>
       <div className="booking-list">
-        {list.map((b) => (
-          <BookingCard key={b.id} booking={b} />
-        ))}
+        {list.map((b) => (<BookingCard key={b.id} booking={b}/>))}
       </div>
-      {!list.length && (
-        <Empty
-          title="A little anticipation goes a long way."
-          href={user.role === 'CUSTOMER' ? '/browse' : undefined}
-        >
+      {!list.length && (<Empty title="A little anticipation goes a long way." href={user.role === 'CUSTOMER' ? '/browse' : undefined}>
           No bookings in this view yet.
-        </Empty>
-      )}
-    </>
-  );
+        </Empty>)}
+    </>);
 }
-export function BookingDetail({ user, bookingId }: { user: User; bookingId: string }) {
-  const b = booking(bookingId, user);
-  const customer = user.role === 'CUSTOMER';
-  const admin = user.role === 'ADMIN';
-  const mine = b.items.find((i) => i.provider_user_id === user.id);
-  const events = all<{
-    id: string;
-    event: string;
-    detail: string;
-    created_at: string;
-    actor: string;
-  }>(
-    'SELECT e.*,u.name actor FROM booking_events e JOIN users u ON u.id=e.actor_id WHERE e.booking_id=? ORDER BY e.created_at,e.rowid',
-    b.id,
-  );
-  const ledger = all<{
-    id: string;
-    type: string;
-    amount: number;
-    fee: number;
-    note: string;
-    created_at: string;
-    provider_id: string | null;
-  }>('SELECT * FROM escrow_transactions WHERE booking_id=? ORDER BY created_at,rowid', b.id).filter(
-    (t) => user.role !== 'PROVIDER' || !t.provider_id || t.provider_id === mine?.provider_id,
-  );
-  return (
-    <>
+export async function BookingDetail({ user, bookingId }: {
+    user: User;
+    bookingId: string;
+}) {
+    const b = (await booking(bookingId, user));
+    const customer = user.role === 'CUSTOMER';
+    const admin = user.role === 'ADMIN';
+    const mine = b.items.find((i) => i.provider_user_id === user.id);
+    const events = (await all<{
+        id: string;
+        event: string;
+        detail: string;
+        created_at: string;
+        actor: string;
+    }>('SELECT e.*,u.name actor FROM booking_events e JOIN users u ON u.id=e.actor_id WHERE e.booking_id=? ORDER BY e.created_at,e.id', b.id));
+    const ledger = (await all<{
+        id: string;
+        type: string;
+        amount: number;
+        fee: number;
+        note: string;
+        created_at: string;
+        provider_id: string | null;
+    }>('SELECT * FROM escrow_transactions WHERE booking_id=? ORDER BY created_at,id', b.id)).filter((t) => user.role !== 'PROVIDER' || !t.provider_id || t.provider_id === mine?.provider_id);
+    return (<>
       <div className="breadcrumbs">
         <Link href={admin ? '/admin/bookings' : customer ? '/bookings' : '/provider/bookings'}>
           Bookings
@@ -122,12 +78,7 @@ export function BookingDetail({ user, bookingId }: { user: User; bookingId: stri
         <span>/</span>
         <span>{b.id.slice(0, 8).toUpperCase()}</span>
       </div>
-      <Heading
-        eyebrow="YOUR EVENT DETAILS"
-        title={b.title}
-        description={`Booking ${b.id.slice(0, 8).toUpperCase()} · ${b.event_type}`}
-        action={<Status value={b.status} />}
-      />
+      <Heading eyebrow="YOUR EVENT DETAILS" title={b.title} description={`Booking ${b.id.slice(0, 8).toUpperCase()} · ${b.event_type}`} action={<Status value={b.status}/>}/>
       <div className="detail-layout">
         <div>
           <Panel>
@@ -153,14 +104,11 @@ export function BookingDetail({ user, bookingId }: { user: User; bookingId: stri
             <p>
               <strong>Customer:</strong> {b.customer_name} · {b.customer_email}
             </p>
-            {b.requests && (
-              <p>
+            {b.requests && (<p>
                 <strong>A few extra details:</strong> {b.requests}
-              </p>
-            )}
+              </p>)}
           </Panel>
-          {b.items.map((item) => (
-            <Panel key={item.id}>
+          {b.items.map((item) => (<Panel key={item.id}>
               <div className="row between">
                 <div>
                   <Link className="text-link" href={`/providers/${item.provider_id}`}>
@@ -170,9 +118,9 @@ export function BookingDetail({ user, bookingId }: { user: User; bookingId: stri
                     {item.package_name} · {item.title}
                   </h3>
                 </div>
-                <Status value={item.status} />
+                <Status value={item.status}/>
               </div>
-              <Inclusions text={item.inclusions} />
+              <Inclusions text={item.inclusions}/>
               <p className="muted pre-line">{item.terms}</p>
               <small>Provider contact: {item.provider_phone}</small>
               <div className="row between item-amount">
@@ -180,68 +128,49 @@ export function BookingDetail({ user, bookingId }: { user: User; bookingId: stri
                 <strong>{money(item.allocation)}</strong>
               </div>
               {(customer || item.provider_user_id === user.id) &&
-                b.escrow_status === 'HELD_IN_ESCROW' && (
-                  <>
-                    {item.status === 'CONFIRMED' && (
-                      <Handshake itemId={item.id} gate="START" issue={customer} />
-                    )}{' '}
-                    {['IN_PROGRESS', 'COMPLETION_PENDING'].includes(item.status) && (
-                      <Handshake itemId={item.id} gate="COMPLETE" issue={!customer} />
-                    )}
-                  </>
-                )}
+                b.escrow_status === 'HELD_IN_ESCROW' && (<>
+                    {item.status === 'CONFIRMED' && (<Handshake itemId={item.id} gate="START" issue={customer}/>)}{' '}
+                    {['IN_PROGRESS', 'COMPLETION_PENDING'].includes(item.status) && (<Handshake itemId={item.id} gate="COMPLETE" issue={!customer}/>)}
+                  </>)}
               {customer &&
                 b.status === 'COMPLETED' &&
-                (item.review_id ? (
-                  <Badge tone="green">Your review is published</Badge>
-                ) : (
-                  <details className="review-form">
+                (item.review_id ? (<Badge tone="green">Your review is published</Badge>) : (<details className="review-form">
                     <summary>Leave a little love · write a review</summary>
                     <ActionForm action="review.create" data={{ itemId: item.id }}>
                       <Field label="Your rating">
                         <select name="rating">
-                          {[5, 4, 3, 2, 1].map((n) => (
-                            <option key={n} value={n}>
+                          {[5, 4, 3, 2, 1].map((n) => (<option key={n} value={n}>
                               {n} star{n > 1 ? 's' : ''}
-                            </option>
-                          ))}
+                            </option>))}
                         </select>
                       </Field>
                       <Field label="Your experience">
-                        <textarea name="body" minLength={10} maxLength={2000} required rows={3} />
+                        <textarea name="body" minLength={10} maxLength={2000} required rows={3}/>
                       </Field>
                       <button className="btn" type="submit">
                         Publish verified review
                       </button>
                     </ActionForm>
-                  </details>
-                ))}
-            </Panel>
-          ))}
+                  </details>))}
+            </Panel>))}
           <Panel>
             <h2>How it’s coming together</h2>
             <ol className="timeline">
-              {events.map((e) => (
-                <li key={e.id}>
-                  <span className="timeline-dot" />
+              {events.map((e) => (<li key={e.id}>
+                  <span className="timeline-dot"/>
                   <div>
                     <strong>{e.event}</strong>
-                    {e.detail && (
-                      <p>
+                    {e.detail && (<p>
                         {!admin &&
-                        ['Service check-in verified', 'Service completion verified'].includes(
-                          e.event,
-                        )
-                          ? e.detail.split('; token ')[0]
-                          : e.detail}
-                      </p>
-                    )}
+                    ['Service check-in verified', 'Service completion verified'].includes(e.event)
+                    ? e.detail.split('; token ')[0]
+                    : e.detail}
+                      </p>)}
                     <small>
                       {dateLabel(e.created_at)} · {e.actor}
                     </small>
                   </div>
-                </li>
-              ))}
+                </li>))}
             </ol>
           </Panel>
         </div>
@@ -271,144 +200,105 @@ export function BookingDetail({ user, bookingId }: { user: User; bookingId: stri
               </div>
             </div>
             <div className="escrow-state">
-              <ShieldCheck size={25} />
+              <ShieldCheck size={25}/>
               <div>
                 <strong>Mock escrow</strong>
-                <Status value={b.escrow_status} />
+                <Status value={b.escrow_status}/>
               </div>
             </div>
             <p className="small-note">
               Development Payment Simulation. No real money is transferred.
             </p>
-            {customer && b.status === 'ACCEPTED' && (
-              <Link className="btn full" href={`/checkout/${b.id}`}>
+            {customer && b.status === 'ACCEPTED' && (<Link className="btn full" href={`/checkout/${b.id}`}>
                 Continue to checkout
-                <ArrowRight size={16} />
-              </Link>
-            )}
-            {b.status === 'PENDING' && (
-              <p className="notice">
+                <ArrowRight size={16}/>
+              </Link>)}
+            {b.status === 'PENDING' && (<p className="notice">
                 Waiting for {b.items.filter((i) => i.status === 'PENDING').length} provider
                 acceptance(s).
-              </p>
-            )}
-            {mine?.status === 'PENDING' && b.status === 'PENDING' && (
-              <ActionButton
-                action="booking.accept"
-                data={{ bookingId: b.id }}
-                label="Accept booking request"
-                variant="primary"
-              />
-            )}
+              </p>)}
+            {mine?.status === 'PENDING' && b.status === 'PENDING' && (<ActionButton action="booking.accept" data={{ bookingId: b.id }} label="Accept booking request" variant="primary"/>)}
           </Panel>
-          {!admin && !['COMPLETED', 'CANCELLED', 'DISPUTED'].includes(b.status) && (
-            <Panel>
+          {!admin && !['COMPLETED', 'CANCELLED', 'DISPUTED'].includes(b.status) && (<Panel>
               <h3>Need to change the plan?</h3>
-              <ActionForm
-                action="booking.cancel"
-                data={{ bookingId: b.id }}
-                confirm={
-                  b.escrow_status === 'UNPAID'
-                    ? 'Cancel this request and release its reserved dates?'
-                    : 'Request cancellation and freeze held escrow for administrator review?'
-                }
-              >
+              <ActionForm action="booking.cancel" data={{ bookingId: b.id }} confirm={b.escrow_status === 'UNPAID'
+                ? 'Cancel this request and release its reserved dates?'
+                : 'Request cancellation and freeze held escrow for administrator review?'}>
                 <Field label="Cancellation / rejection reason">
-                  <textarea name="reason" minLength={5} required rows={3} />
+                  <textarea name="reason" minLength={5} required rows={3}/>
                 </Field>
                 <button className="btn secondary full" type="submit">
                   {b.escrow_status === 'UNPAID'
-                    ? customer
-                      ? 'Cancel request'
-                      : 'Reject / cancel request'
-                    : 'Request cancellation'}
+                ? customer
+                    ? 'Cancel request'
+                    : 'Reject / cancel request'
+                : 'Request cancellation'}
                 </button>
               </ActionForm>
-              {b.escrow_status === 'HELD_IN_ESCROW' && (
-                <details>
+              {b.escrow_status === 'HELD_IN_ESCROW' && (<details>
                   <summary>Something went wrong? Open a dispute</summary>
                   <ActionForm action="booking.dispute" data={{ bookingId: b.id }}>
                     <Field label="What happened?">
-                      <textarea name="reason" minLength={10} required rows={3} />
+                      <textarea name="reason" minLength={10} required rows={3}/>
                     </Field>
                     <button className="btn danger">Open dispute & freeze escrow</button>
                   </ActionForm>
-                </details>
-              )}
-            </Panel>
-          )}
-          {admin && ['HELD_IN_ESCROW', 'DISPUTED'].includes(b.escrow_status) && (
-            <EscrowControls bookingId={b.id} disputed={b.status === 'DISPUTED'} />
-          )}
+                </details>)}
+            </Panel>)}
+          {admin && ['HELD_IN_ESCROW', 'DISPUTED'].includes(b.escrow_status) && (<EscrowControls bookingId={b.id} disputed={b.status === 'DISPUTED'}/>)}
           <TrustNote />
         </aside>
       </div>
       <Panel>
         <h2>Escrow transaction history</h2>
-        {ledger.length ? (
-          <DataTable headings={['Date', 'Transaction', 'Amount', 'Platform fee', 'Note']}>
-            {ledger.map((t) => (
-              <tr key={t.id}>
+        {ledger.length ? (<DataTable headings={['Date', 'Transaction', 'Amount', 'Platform fee', 'Note']}>
+            {ledger.map((t) => (<tr key={t.id}>
                 <td>{dateLabel(t.created_at)}</td>
                 <td>
-                  <Status value={t.type} />
+                  <Status value={t.type}/>
                 </td>
                 <td>{money(t.amount)}</td>
                 <td>{money(t.fee)}</td>
                 <td>{t.note}</td>
-              </tr>
-            ))}
-          </DataTable>
-        ) : (
-          <p className="muted">No payment has been made yet.</p>
-        )}
+              </tr>))}
+          </DataTable>) : (<p className="muted">No payment has been made yet.</p>)}
       </Panel>
-    </>
-  );
+    </>);
 }
-export function EscrowControls({ bookingId, disputed }: { bookingId: string; disputed: boolean }) {
-  return (
-    <Panel>
+export function EscrowControls({ bookingId, disputed }: {
+    bookingId: string;
+    disputed: boolean;
+}) {
+    return (<Panel>
       <h3>Administrator escrow review</h3>
-      <ActionForm
-        action="escrow.manage"
-        data={{ bookingId, confirmed: true }}
-        confirm="Record this administrator decision and update the simulated escrow ledger? Settlement cannot be repeated."
-      >
+      <ActionForm action="escrow.manage" data={{ bookingId, confirmed: true }} confirm="Record this administrator decision and update the simulated escrow ledger? Settlement cannot be repeated.">
         <Field label="Decision">
           <select name="decision">
-            {disputed ? (
-              <>
+            {disputed ? (<>
                 <option value="refund">Refund customer</option>
                 <option value="release">Confirm completion & release</option>
-              </>
-            ) : (
-              <option value="freeze">Freeze and open review</option>
-            )}
+              </>) : (<option value="freeze">Freeze and open review</option>)}
           </select>
         </Field>
         <Field label="Review findings / reason">
-          <textarea name="reason" required minLength={10} rows={3} />
+          <textarea name="reason" required minLength={10} rows={3}/>
         </Field>
         <button className="btn full" type="submit">
           Review & confirm action
         </button>
       </ActionForm>
-    </Panel>
-  );
+    </Panel>);
 }
-export function Checkout({ user, bookingId }: { user: User; bookingId: string }) {
-  const b = booking(bookingId, user);
-  return (
-    <div className="checkout-layout">
-      <Heading
-        eyebrow="ONE STEP CLOSER"
-        title="Make your date official."
-        description="Review the details, then reserve your celebration."
-      />
+export async function Checkout({ user, bookingId }: {
+    user: User;
+    bookingId: string;
+}) {
+    const b = (await booking(bookingId, user));
+    return (<div className="checkout-layout">
+      <Heading eyebrow="ONE STEP CLOSER" title="Make your date official." description="Review the details, then reserve your celebration."/>
       <Panel>
         <div className="simulation-banner">
-          <ShieldCheck size={22} />
+          <ShieldCheck size={22}/>
           <div>
             <strong>Development Payment Simulation</strong>
             <p>
@@ -421,8 +311,7 @@ export function Checkout({ user, bookingId }: { user: User; bookingId: string })
         <p>
           {dateLabel(b.event_date)} · {b.location}
         </p>
-        {b.items.map((i) => (
-          <div key={i.id} className="checkout-item">
+        {b.items.map((i) => (<div key={i.id} className="checkout-item">
             <div>
               <strong>{i.business_name}</strong>
               <p>
@@ -430,8 +319,7 @@ export function Checkout({ user, bookingId }: { user: User; bookingId: string })
               </p>
             </div>
             <strong>{money(i.allocation)}</strong>
-          </div>
-        ))}
+          </div>))}
         <div className="price-summary">
           <div>
             <span>Subtotal</span>
@@ -450,33 +338,24 @@ export function Checkout({ user, bookingId }: { user: User; bookingId: string })
             <strong>{money(b.total)}</strong>
           </div>
         </div>
-        {b.status === 'ACCEPTED' && b.escrow_status === 'UNPAID' ? (
-          <ActionForm
-            action="booking.pay"
-            data={{ bookingId: b.id }}
-            confirm={`Simulate a ${money(b.total)} payment and hold it in mock escrow? No real money will be transferred.`}
-          >
+        {b.status === 'ACCEPTED' && b.escrow_status === 'UNPAID' ? (<ActionForm action="booking.pay" data={{ bookingId: b.id }} confirm={`Simulate a ${money(b.total)} payment and hold it in mock escrow? No real money will be transferred.`}>
             <label className="check-label">
-              <input type="checkbox" name="confirmed" required />I understand this is a development
+              <input type="checkbox" name="confirmed" required/>I understand this is a development
               mock payment.
             </label>
             <button className="btn full" type="submit">
               Pay & Reserve
-              <ArrowRight size={18} />
+              <ArrowRight size={18}/>
             </button>
-          </ActionForm>
-        ) : (
-          <div className="notice">
+          </ActionForm>) : (<div className="notice">
             {b.escrow_status !== 'UNPAID'
-              ? 'This booking already has a payment record.'
-              : 'Every provider must accept before checkout opens.'}
+                ? 'This booking already has a payment record.'
+                : 'Every provider must accept before checkout opens.'}
             <Link className="text-link" href={`/bookings/${b.id}`}>
               View booking
             </Link>
-          </div>
-        )}
+          </div>)}
         <TrustNote />
       </Panel>
-    </div>
-  );
+    </div>);
 }

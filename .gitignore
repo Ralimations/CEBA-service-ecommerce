@@ -10,3 +10,6 @@ data/
 next-env.d.ts
 *.log
 artifacts/
+
+.vercel
+.env*

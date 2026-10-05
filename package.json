@@ -15,7 +15,6 @@
     "test": "tsx --test tests/*.test.ts",
     "db:migrate": "tsx database/manage.ts migrate",
     "db:seed": "tsx database/manage.ts seed",
-    "db:reset": "tsx database/manage.ts reset",
     "test:smoke": "tsx tests/smoke.ts",
     "test:e2e": "playwright test",
     "test:serve": "tsx tests/serve.ts",
@@ -25,15 +24,19 @@
   "dependencies": {
     "lucide-react": "1.52.0",
     "next": "16.3.8",
+    "postgres": "^3.4.9",
     "qrcode": "1.5.4",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "zod": "4.6.5"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "0.5.8",
+    "@electric-sql/pglite-socket": "0.2.11",
     "@playwright/test": "1.63.0",
     "@tailwindcss/postcss": "4.3.3",
     "@types/node": "24.19.1",
+    "@types/pg": "8.23.1",
     "@types/qrcode": "1.5.6",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",

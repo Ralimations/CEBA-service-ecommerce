@@ -1,9 +1,10 @@
 export const platform = {
-  name: 'Event Marketplace',
+  name: 'Soiree Source',
   currency: 'PHP',
   locale: 'en-PH',
   timezone: 'Asia/Manila',
 };
+export const CURRENT_TERMS_VERSION = '2026-10-05';
 export const recommendation = { featured: 100, vip: 20, rating: 5, completed: 1, completedCap: 20 };
 export const defaults = {
   platformFee: 5,
