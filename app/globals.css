@@ -510,6 +510,9 @@ progress::-moz-progress-bar {
   border-radius: 8px;
   display: block;
 }
+.site-header .brand-mark {
+  transform: none;
+}
 .brand small {
   display: block;
   letter-spacing: 2.3px;
