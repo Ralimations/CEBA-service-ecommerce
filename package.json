@@ -17,6 +17,7 @@
     "db:seed": "tsx database/manage.ts seed",
     "test:smoke": "tsx tests/smoke.ts",
     "test:e2e": "playwright test",
+    "test:browser-isolated": "tsx tests/browser-isolated.ts",
     "test:serve": "tsx tests/serve.ts",
     "format": "prettier --write app components config database features lib server tests types *.ts *.mjs *.json",
     "format:check": "prettier --check app components config database features lib server tests types *.ts *.mjs *.json"

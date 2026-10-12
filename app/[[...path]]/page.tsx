@@ -7,7 +7,7 @@ import { Suspense } from 'react';
 import { Sidebar } from '@/components/navigation';
 import { AuthForm } from '@/components/auth-form';
 import { Home, Browse, ServiceDetail, ProviderDetail, BundlesPage, BundleDetail, } from '@/features/marketplace/pages';
-import { CustomerOverview, ProfilePage, VoucherWallet, Notifications, SupportPage, } from '@/features/account/pages';
+import { CustomerOverview, ProfilePage, VoucherWallet, Notifications, SupportPage, PublicAccountAppeal, } from '@/features/account/pages';
 import { BookingList, BookingDetail, Checkout } from '@/features/bookings/pages';
 import { ProviderOverview, ProviderProfile, ProviderCalendar, ProviderBundles, ProviderReviews, ProviderEarnings, ProviderSubscription, ProviderPromotions, } from '@/features/provider/pages';
 import { ProviderServices, ServiceEditor, ProviderPackages } from '@/features/provider/services';
@@ -109,6 +109,8 @@ async function RouteContent({ params, searchParams }: Props) {
         <p><Link href="/register" className="btn">Create an account</Link></p>
       </main>
     );
+    if (root === 'support' && section === 'appeal' && path.length === 2)
+        return (<main className="container page-space"><PublicAccountAppeal/></main>);
     if (root === 'support' && !user)
         return (<main className="container page-space">
         <SupportPage user={null}/>
@@ -237,7 +239,7 @@ async function RouteContent({ params, searchParams }: Props) {
                 page = <AdminEscrow user={active}/>;
                 break;
             case 'support':
-                page = <AdminSupport />;
+                page = <AdminSupport user={active}/>;
                 break;
             case 'settings':
                 page = <AdminSettings />;

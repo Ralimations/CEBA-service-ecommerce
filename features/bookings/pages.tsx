@@ -8,11 +8,14 @@ import { ActionForm, ActionButton } from '@/components/action-form';
 import { BookingCard } from '@/components/cards';
 import { money, dateLabel, human, today } from '@/lib/format';
 import { Handshake } from './handshake';
+import { expireDueBookingsFor, expirePendingBooking } from '@/server/bookings';
+import { cancellationReasonForBooking, providerCancellationReasons, otherReasonPendingCopy } from '@/server/cancellations';
 export async function BookingList({ user, status = '', base = '/bookings', }: {
     user: User;
     status?: string;
     base?: string;
 }) {
+    await expireDueBookingsFor(user);
     let list = (await bookingsFor(user));
     if (status === 'UPCOMING')
         list = list.filter((b) => b.event_date >= today() && !['CANCELLED', 'COMPLETED'].includes(b.status));
@@ -50,17 +53,22 @@ export async function BookingDetail({ user, bookingId }: {
     user: User;
     bookingId: string;
 }) {
-    const b = (await booking(bookingId, user));
+    let b = (await booking(bookingId, user));
+    if (b.status === 'PENDING' && b.response_deadline_at) {
+        await expirePendingBooking(bookingId);
+        b = await booking(bookingId, user);
+    }
     const customer = user.role === 'CUSTOMER';
     const admin = user.role === 'ADMIN';
     const mine = b.items.find((i) => i.provider_user_id === user.id);
+    const cancellationReason = await cancellationReasonForBooking(b.id, user);
     const events = (await all<{
         id: string;
         event: string;
         detail: string;
         created_at: string;
         actor: string;
-    }>('SELECT e.*,u.name actor FROM booking_events e JOIN users u ON u.id=e.actor_id WHERE e.booking_id=? ORDER BY e.created_at,e.id', b.id));
+    }>('SELECT e.*,COALESCE(u.name,\'SoiréeSource system\') actor FROM booking_events e LEFT JOIN users u ON u.id=e.actor_id WHERE e.booking_id=? ORDER BY e.created_at,e.id', b.id));
     const ledger = (await all<{
         id: string;
         type: string;
@@ -79,10 +87,12 @@ export async function BookingDetail({ user, bookingId }: {
         <span>{b.id.slice(0, 8).toUpperCase()}</span>
       </div>
       <Heading eyebrow="YOUR EVENT DETAILS" title={b.title} description={`Booking ${b.id.slice(0, 8).toUpperCase()} · ${b.event_type}`} action={<Status value={b.status}/>}/>
+      {b.expired_at && <Panel><h2>Request expired</h2><p>All participating providers did not accept within 24 hours. Any accepted date reservations were released. No payment was taken.</p></Panel>}
       <div className="detail-layout">
         <div>
           <Panel>
             <h2>The plan</h2>
+            {b.status === 'PENDING' && b.response_deadline_at && <p className="notice">All participating providers must accept by {new Intl.DateTimeFormat('en-PH', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Manila' }).format(new Date(b.response_deadline_at))} (Philippine time). Otherwise the whole request expires.</p>}
             <div className="event-facts">
               <span>
                 <CalendarDays />
@@ -173,6 +183,18 @@ export async function BookingDetail({ user, bookingId }: {
                 </li>))}
             </ol>
           </Panel>
+          {cancellationReason && <Panel>
+            <h2>Provider cancellation explanation</h2>
+            {cancellationReason.reason_code !== 'OTHER'
+              ? <p>{providerCancellationReasons[cancellationReason.reason_code]}</p>
+              : customer
+                ? cancellationReason.decision === 'APPROVED'
+                  ? <p>{cancellationReason.customer_visible_reason}</p>
+                  : <p>{otherReasonPendingCopy}</p>
+                : admin || cancellationReason.requester_id === user.id
+                  ? <p className="pre-line">{cancellationReason.submitted_text}{admin && cancellationReason.decision && ` · ${cancellationReason.decision}`}</p>
+                  : <p>{otherReasonPendingCopy}</p>}
+          </Panel>}
         </div>
         <aside>
           <Panel>
@@ -224,9 +246,11 @@ export async function BookingDetail({ user, bookingId }: {
               <ActionForm action="booking.cancel" data={{ bookingId: b.id }} confirm={b.escrow_status === 'UNPAID'
                 ? 'Cancel this request and release its reserved dates?'
                 : 'Request cancellation and freeze held escrow for administrator review?'}>
-                <Field label="Cancellation / rejection reason">
-                  <textarea name="reason" minLength={5} required rows={3}/>
-                </Field>
+                {customer ? <Field label="Cancellation reason"><textarea name="reason" minLength={5} maxLength={1000} required rows={3}/></Field> : <>
+                  <p className="muted">Provisional reason list · awaiting final product approval.</p>
+                  <Field label="Primary cancellation reason"><select name="reasonCode" defaultValue="SCHEDULING">{Object.entries(providerCancellationReasons).map(([code, label]) => <option key={code} value={code}>{label}</option>)}</select></Field>
+                  <Field label="Other explanation" hint="Required only when Other is selected. An administrator must review it before customers can see it."><textarea name="otherReasonText" maxLength={500} rows={3}/></Field>
+                </>}
                 <button className="btn secondary full" type="submit">
                   {b.escrow_status === 'UNPAID'
                 ? customer

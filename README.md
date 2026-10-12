@@ -115,18 +115,19 @@ Use separate browser profiles or an incognito window for simultaneous customer/p
 - Marketplace keyword/category/date/budget/rating/availability/trust/VIP filters, explicit sorting, individual and bundle discovery, and provider portfolios and reviews.
 - Provider onboarding checklist, editable profiles, services, packages, add-ons, publication states, and an availability calendar.
 - Date-reserving booking acceptance, rejection/cancellation, item-level progress for bundles, price breakdowns, and immutable booking timelines.
+- Persisted 24-hour response windows for new requests, whole-bundle expiry with reservation cleanup, and structured provider cancellation reasons with admin review for custom wording.
 - Mock checkout and escrow, two single-use QR/manual-code gates, confirmed admin dispute resolution, full refunds, and supplier-level earnings allocations.
 - Admin-curated bundles with supplier approval of terms and intersection of participant availability.
 - Welcome, seasonal, rank, and referral vouchers with server validation; completed-booking loyalty ranks; earned trust badges distinct from paid visibility.
 - Simulated Classic/VIP subscriptions and scoped 3/7/30-day featured placements with automatic expiry in queries.
-- Persistent notifications, visit-driven event and promotion reminders, deterministic FAQ assistance, and support tickets with administrator replies.
+- Persistent notifications, visit-driven event and promotion reminders, deterministic FAQ assistance, authenticated support tickets, and a public account-review intake with an admin-only queue.
 - Customer, provider, and admin dashboards based on saved records, responsive layouts, accessible form labels, field errors, confirmation dialogs, and empty/error states.
 
 ## Main routes
 
 | Audience             | Routes                                                                                                                                                                                                                                                                                                                                                                                        |
 | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Public               | `/`, `/browse`, `/services/:id`, `/providers/:id`, `/bundles`, `/bundles/:id`, `/login`, `/register`, `/support`                                                                                                                                                                                                                                                                              |
+| Public               | `/`, `/browse`, `/services/:id`, `/providers/:id`, `/bundles`, `/bundles/:id`, `/login`, `/register`, `/support`, `/support/appeal`                                                                                                                                                                                                                                                            |
 | Customer             | `/dashboard`, `/profile`, `/bookings`, `/bookings/:id`, `/checkout/:id`, `/vouchers`, `/notifications`                                                                                                                                                                                                                                                                                        |
 | Provider             | `/provider`, `/provider/profile`, `/provider/services`, `/provider/services/new`, `/provider/services/:id`, `/provider/packages`, `/provider/calendar`, `/provider/bookings`, `/provider/bundles`, `/provider/reviews`, `/provider/earnings`, `/provider/subscription`, `/provider/promotions`                                                                                                |
 | Administrator        | `/admin`, `/admin/users`, `/admin/providers`, `/admin/services`, `/admin/categories`, `/admin/bookings`, `/admin/bundles`, `/admin/bundles/new`, `/admin/bundles/:id`, `/admin/vouchers`, `/admin/vouchers/new`, `/admin/vouchers/:id`, `/admin/subscriptions`, `/admin/placements`, `/admin/badges`, `/admin/disputes`, `/admin/escrow`, `/admin/support`, `/admin/settings`, `/admin/audit` |
@@ -208,7 +209,8 @@ Verified during implementation: PostgreSQL migration and seed, terms acceptance 
 
 - Real payment gateways, payouts, recurring billing, email/SMS, external identity/business verification, cloud deployment, and production security/scale operations remain Phase 2.
 - No integrated camera scanner, partial refund, installment checkout, or per-provider partial escrow release. Bundles release only after every item completes, except an explicit audited admin resolution.
-- Availability is one event per provider per day. Accepted unpaid requests keep their reservation until cancelled; no automatic reservation timeout exists yet.
+- Availability is one event per provider per day. New pending requests expire after 24 hours if all participating providers do not accept; the app reconciles due requests when relevant bookings are accessed or acted on. There is no scheduled background expiry worker, and pre-existing pending requests retain no deadline.
+- Public account-support submissions can be reviewed by administrators, but the app has no email delivery. Rate limiting is per normalized email and is a lightweight spam control, not identity verification.
 - Notifications update on navigation/refresh. Event/promotion reminders are generated during authenticated visits, without a background scheduler or push service.
 - Portfolios use local assets or entered image URLs; direct file uploads and media storage are not implemented. Provider local verification is an admin review flag, not external KYC.
 - Analytics are basic database aggregates. VIP has visibility, portfolio capacity, and placement discounts; advanced VIP analytics are deferred.

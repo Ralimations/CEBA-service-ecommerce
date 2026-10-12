@@ -56,6 +56,8 @@ CREATE TABLE IF NOT EXISTS bookings (
  escrow_status TEXT NOT NULL DEFAULT 'UNPAID' CHECK(escrow_status IN ('UNPAID','HELD_IN_ESCROW','PARTIALLY_RELEASED','RELEASED','REFUNDED','DISPUTED')),
  created_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP)
 );
+ALTER TABLE bookings ADD COLUMN IF NOT EXISTS response_deadline_at TIMESTAMPTZ;
+ALTER TABLE bookings ADD COLUMN IF NOT EXISTS expired_at TIMESTAMPTZ;
 CREATE TABLE IF NOT EXISTS booking_items (
  id TEXT PRIMARY KEY, booking_id TEXT NOT NULL REFERENCES bookings(id), provider_id TEXT NOT NULL REFERENCES providers(id), service_id TEXT NOT NULL REFERENCES services(id), package_id TEXT NOT NULL REFERENCES packages(id),
  title TEXT NOT NULL, package_name TEXT NOT NULL, inclusions TEXT NOT NULL, terms TEXT NOT NULL DEFAULT '',
@@ -77,6 +79,17 @@ CREATE TABLE IF NOT EXISTS handshake_tokens (
  verified_by TEXT REFERENCES users(id), created_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP)
 );
 CREATE TABLE IF NOT EXISTS booking_events (id TEXT PRIMARY KEY, booking_id TEXT NOT NULL REFERENCES bookings(id), actor_id TEXT NOT NULL REFERENCES users(id), event TEXT NOT NULL, detail TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP));
+ALTER TABLE booking_events ALTER COLUMN actor_id DROP NOT NULL;
+CREATE TABLE IF NOT EXISTS provider_cancellation_reasons (
+ id TEXT PRIMARY KEY, booking_id TEXT NOT NULL REFERENCES bookings(id), requester_id TEXT NOT NULL REFERENCES users(id),
+ reason_code TEXT NOT NULL CHECK(reason_code IN ('SCHEDULING','STAFFING','EQUIPMENT','EMERGENCY','WEATHER_SAFETY','VENUE_LOGISTICS','OTHER')),
+ submitted_text TEXT NOT NULL DEFAULT '', created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS provider_cancellation_reviews (
+ id TEXT PRIMARY KEY, reason_id TEXT NOT NULL REFERENCES provider_cancellation_reasons(id), reviewer_id TEXT NOT NULL REFERENCES users(id),
+ decision TEXT NOT NULL CHECK(decision IN ('APPROVED','REJECTED')), customer_visible_reason TEXT NOT NULL DEFAULT '',
+ moderation_note TEXT NOT NULL DEFAULT '', created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
 CREATE TABLE IF NOT EXISTS reviews (id TEXT PRIMARY KEY, booking_item_id TEXT NOT NULL UNIQUE REFERENCES booking_items(id), customer_id TEXT NOT NULL REFERENCES users(id), provider_id TEXT NOT NULL REFERENCES providers(id), service_id TEXT NOT NULL REFERENCES services(id), rating INTEGER NOT NULL CHECK(rating BETWEEN 1 AND 5), body TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP));
 CREATE TABLE IF NOT EXISTS disputes (id TEXT PRIMARY KEY, booking_id TEXT NOT NULL REFERENCES bookings(id), user_id TEXT NOT NULL REFERENCES users(id), reason TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'OPEN' CHECK(status IN ('OPEN','UNDER_REVIEW','RESOLVED_CUSTOMER','RESOLVED_PROVIDER','CLOSED')), resolution TEXT NOT NULL DEFAULT '', admin_id TEXT REFERENCES users(id), created_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP));
 CREATE UNIQUE INDEX IF NOT EXISTS one_open_dispute ON disputes(booking_id) WHERE status IN ('OPEN','UNDER_REVIEW');
@@ -86,11 +99,29 @@ CREATE TABLE IF NOT EXISTS provider_badges (provider_id TEXT NOT NULL REFERENCES
 CREATE TABLE IF NOT EXISTS referrals (id TEXT PRIMARY KEY, referrer_id TEXT NOT NULL REFERENCES users(id), referred_id TEXT NOT NULL UNIQUE REFERENCES users(id), rewarded_at TEXT, CHECK(referrer_id<>referred_id));
 CREATE TABLE IF NOT EXISTS notifications (id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id), title TEXT NOT NULL, body TEXT NOT NULL, href TEXT NOT NULL DEFAULT '/notifications', read_at TEXT, created_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP));
 CREATE TABLE IF NOT EXISTS support_tickets (id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id), booking_id TEXT REFERENCES bookings(id), subject TEXT NOT NULL, message TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'OPEN' CHECK(status IN ('OPEN','IN_PROGRESS','RESOLVED','CLOSED')), response TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP));
+CREATE TABLE IF NOT EXISTS public_account_support (
+ id TEXT PRIMARY KEY, submitted_email TEXT NOT NULL, email_hash TEXT NOT NULL,
+ account_type TEXT NOT NULL CHECK(account_type IN ('CUSTOMER','PROVIDER','UNSURE')),
+ category TEXT NOT NULL CHECK(category IN ('SUSPENSION_REVIEW','ACCOUNT_HELP')),
+ message TEXT NOT NULL, reference_number TEXT NOT NULL DEFAULT '', status TEXT NOT NULL DEFAULT 'OPEN' CHECK(status IN ('OPEN','IN_REVIEW','RESOLVED')),
+ follow_up_required BOOLEAN NOT NULL DEFAULT TRUE,
+ internal_notes TEXT NOT NULL DEFAULT '', created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ reviewed_at TIMESTAMPTZ, reviewed_by TEXT REFERENCES users(id)
+);
+CREATE TABLE IF NOT EXISTS public_support_rate_limits (
+ email_hash TEXT PRIMARY KEY, window_started_at TIMESTAMPTZ NOT NULL, request_count INTEGER NOT NULL CHECK(request_count>=0)
+);
+ALTER TABLE public_account_support ADD COLUMN IF NOT EXISTS follow_up_required BOOLEAN NOT NULL DEFAULT TRUE;
 CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value REAL NOT NULL);
 CREATE TABLE IF NOT EXISTS audit_log (id TEXT PRIMARY KEY, actor_id TEXT NOT NULL REFERENCES users(id), action TEXT NOT NULL, target TEXT NOT NULL, detail TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP));
 CREATE INDEX IF NOT EXISTS bookings_customer ON bookings(customer_id,event_date);
 CREATE INDEX IF NOT EXISTS items_provider ON booking_items(provider_id,booking_id);
+CREATE INDEX IF NOT EXISTS bookings_due_response ON bookings(response_deadline_at) WHERE status='PENDING';
+CREATE INDEX IF NOT EXISTS provider_cancellation_reason_queue ON provider_cancellation_reasons(reason_code,created_at DESC);
+CREATE INDEX IF NOT EXISTS provider_cancellation_review_history ON provider_cancellation_reviews(reason_id,created_at DESC);
 CREATE INDEX IF NOT EXISTS notifications_user ON notifications(user_id,read_at);
+CREATE INDEX IF NOT EXISTS public_account_support_queue ON public_account_support(status,created_at DESC);
+CREATE INDEX IF NOT EXISTS public_account_support_email ON public_account_support(email_hash,created_at DESC);
 CREATE INDEX IF NOT EXISTS service_category ON services(category_id,status);
 CREATE OR REPLACE FUNCTION soiree_append_only() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN RAISE EXCEPTION '% is append-only', TG_TABLE_NAME; END; $$;
@@ -101,6 +132,12 @@ DROP TRIGGER IF EXISTS immutable_ledger_delete ON escrow_transactions;
 DROP TRIGGER IF EXISTS immutable_audit_update ON audit_log;
 DROP TRIGGER IF EXISTS immutable_audit_delete ON audit_log;
 CREATE TRIGGER immutable_events_update BEFORE UPDATE OR DELETE ON booking_events FOR EACH ROW EXECUTE FUNCTION soiree_append_only();
+DROP TRIGGER IF EXISTS immutable_cancellation_reason_update ON provider_cancellation_reasons;
+DROP TRIGGER IF EXISTS immutable_cancellation_reason_delete ON provider_cancellation_reasons;
+DROP TRIGGER IF EXISTS immutable_cancellation_review_update ON provider_cancellation_reviews;
+DROP TRIGGER IF EXISTS immutable_cancellation_review_delete ON provider_cancellation_reviews;
+CREATE TRIGGER immutable_cancellation_reason_update BEFORE UPDATE OR DELETE ON provider_cancellation_reasons FOR EACH ROW EXECUTE FUNCTION soiree_append_only();
+CREATE TRIGGER immutable_cancellation_review_update BEFORE UPDATE OR DELETE ON provider_cancellation_reviews FOR EACH ROW EXECUTE FUNCTION soiree_append_only();
 CREATE TRIGGER immutable_ledger_update BEFORE UPDATE OR DELETE ON escrow_transactions FOR EACH ROW EXECUTE FUNCTION soiree_append_only();
 CREATE TRIGGER immutable_audit_update BEFORE UPDATE OR DELETE ON audit_log FOR EACH ROW EXECUTE FUNCTION soiree_append_only();
 INSERT INTO schema_migrations(version) VALUES(1) ON CONFLICT(version) DO NOTHING;
@@ -108,3 +145,6 @@ INSERT INTO schema_migrations(version) VALUES(1) ON CONFLICT(version) DO NOTHING
 
 ALTER TABLE users ADD COLUMN IF NOT EXISTS terms_accepted_at TIMESTAMPTZ;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS terms_version TEXT;
+
+INSERT INTO schema_migrations(version) VALUES(2) ON CONFLICT(version) DO NOTHING;
+INSERT INTO schema_migrations(version) VALUES(3) ON CONFLICT(version) DO NOTHING;

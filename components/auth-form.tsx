@@ -137,6 +137,11 @@ export function AuthForm({
         </Link>
       </p>
       {!register && (
+        <p className="auth-switch">
+          Account suspended? <Link href="/support/appeal">Request account review</Link>
+        </p>
+      )}
+      {!register && (
         <div className="demo-logins">
           <span className="eyebrow">EXPLORE THE LOCAL DEMO</span>
           <div className="button-row">

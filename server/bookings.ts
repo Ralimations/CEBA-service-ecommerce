@@ -1,13 +1,14 @@
 import { mapAsync, forEachAsync, everyAsync } from '@/lib/async';
 import { randomBytes } from 'node:crypto';
 import { z } from 'zod';
-import { one, run, insert, transaction, id, now, notify, admins, settings, audit } from './db';
+import { one, all, run, insert, transaction, id, now, notify, admins, settings, audit } from './db';
 import { available, booking, bookingItems, bundles, packagesFor, service } from './queries';
 import { validateVoucher, rewardReferral } from './vouchers';
 import { assert, requireRole, checkTransition, type User, type BookingStatus } from '@/lib/domain';
 import { today } from '@/lib/format';
 import { hashToken } from './security';
 import type { Booking } from '@/types/models';
+import { otherReasonPendingCopy, providerCancellationReasons } from './cancellations';
 export const eventDate = z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, 'Choose a valid date.')
@@ -24,7 +25,7 @@ const createSchema = z.object({
     voucher: z.string().max(50).default(''),
     addons: z.array(z.string()).default([]),
 });
-export async function event(bookingId: string, actorId: string, label: string, detail = '') {
+export async function event(bookingId: string, actorId: string | null, label: string, detail = '') {
     (await insert('booking_events', {
         id: id(),
         booking_id: bookingId,
@@ -32,6 +33,53 @@ export async function event(bookingId: string, actorId: string, label: string, d
         event: label,
         detail,
     }));
+}
+const RESPONSE_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+async function expireLockedBooking(bookingId: string, at: Date) {
+    const state = await one<{ customer_id: string; status: string; response_deadline_at: string | null }>(
+        'SELECT customer_id,status,response_deadline_at FROM bookings WHERE id=?', bookingId,
+    );
+    if (!state || state.status !== 'PENDING' || !state.response_deadline_at || Date.parse(state.response_deadline_at) > at.getTime()) return false;
+    const timestamp = at.toISOString();
+    const changed = await run(
+        "UPDATE bookings SET status='CANCELLED',expired_at=? WHERE id=? AND status='PENDING' AND expired_at IS NULL AND response_deadline_at<=?::timestamptz",
+        timestamp, bookingId, timestamp,
+    );
+    if (changed.changes !== 1) return false;
+    const items = await bookingItems(bookingId);
+    await run("UPDATE booking_items SET status='CANCELLED' WHERE booking_id=?", bookingId);
+    await run('DELETE FROM reservations WHERE booking_id=?', bookingId);
+    const explanation = 'Not all participating providers accepted within 24 hours. Accepted date reservations were released. No payment was taken.';
+    await event(bookingId, null, 'Booking request expired', explanation);
+    const recipients = new Set([state.customer_id, ...items.map((item) => item.provider_user_id)]);
+    for (const recipient of recipients)
+        await notify(recipient, 'Booking request expired', explanation, `/bookings/${bookingId}`);
+    return true;
+}
+
+export async function expirePendingBooking(bookingId: string, at = new Date()) {
+    return transaction(async () => {
+        const locked = await one<{ id: string }>('SELECT id FROM bookings WHERE id=? FOR UPDATE', bookingId);
+        if (!locked) return false;
+        return expireLockedBooking(bookingId, at);
+    });
+}
+
+export async function expireDueBookingsFor(user: User, at = new Date()) {
+    requireRole(user, 'CUSTOMER', 'PROVIDER', 'ADMIN');
+    const timestamp = at.toISOString();
+    const due = await all<{ id: string }>(
+        `SELECT b.id FROM bookings b
+         WHERE b.status='PENDING' AND b.expired_at IS NULL AND b.response_deadline_at<=?::timestamptz
+           AND (?='ADMIN' OR (?='CUSTOMER' AND b.customer_id=?) OR (?='PROVIDER' AND EXISTS(
+             SELECT 1 FROM booking_items i JOIN providers p ON p.id=i.provider_id WHERE i.booking_id=b.id AND p.user_id=?)))
+         ORDER BY b.response_deadline_at,b.id LIMIT 20`,
+        timestamp, user.role, user.role, user.id, user.role, user.id,
+    );
+    let expired = 0;
+    for (const item of due) if (await expirePendingBooking(item.id, at)) expired++;
+    return expired;
 }
 export async function notifyBooking(b: Booking, title: string, body: string) {
     const recipients = new Set([b.customer_id, ...b.items.map((i) => i.provider_user_id)]);
@@ -146,6 +194,7 @@ export async function createBooking(user: User, input: unknown) {
             total,
             platform_fee: fee,
             voucher_id: promo?.voucher.id || null,
+            response_deadline_at: new Date(Date.now() + RESPONSE_WINDOW_MS).toISOString(),
         }));
         let allocated = 0, fees = 0;
         (await forEachAsync(selected, async (s, index) => {
@@ -183,6 +232,11 @@ export async function createBooking(user: User, input: unknown) {
 export async function acceptBooking(user: User, bookingId: string) {
     requireRole(user, 'PROVIDER');
     return (await transaction(async () => {
+        await booking(bookingId, user);
+        const locked = await one<{ id: string }>('SELECT id FROM bookings WHERE id=? FOR UPDATE', bookingId);
+        assert(locked, 'Booking not found.', 404);
+        if (await expireLockedBooking(bookingId, new Date()))
+            return { message: 'This request expired because all providers did not accept within 24 hours. No payment was taken.' };
         const b = (await booking(bookingId, user));
         assert(b.status === 'PENDING', 'This request is no longer pending.');
         const item = b.items.find((i) => i.provider_user_id === user.id)!;
@@ -199,11 +253,32 @@ export async function acceptBooking(user: User, bookingId: string) {
         return { message: 'Booking accepted. This date is now reserved.' };
     }));
 }
-export async function cancelBooking(user: User, bookingId: string, reason: string) {
-    const text = z.string().trim().min(5, 'Please give a short reason.').max(1000).parse(reason);
+export async function cancelBooking(user: User, bookingId: string, input: unknown) {
+    assert(['CUSTOMER', 'PROVIDER'].includes(user.role), 'Use admin escrow controls for platform interventions.');
     return (await transaction(async () => {
+        await booking(bookingId, user);
+        const locked = await one<{ id: string }>('SELECT id FROM bookings WHERE id=? FOR UPDATE', bookingId);
+        assert(locked, 'Booking not found.', 404);
+        if (await expireLockedBooking(bookingId, new Date()))
+            return { message: 'This request already expired because all providers did not accept within 24 hours.' };
         const b = (await booking(bookingId, user));
-        assert(['CUSTOMER', 'PROVIDER'].includes(user.role), 'Use admin escrow controls for platform interventions.');
+        let text: string;
+        if (user.role === 'PROVIDER') {
+            const data = z.object({
+                reasonCode: z.enum(['SCHEDULING', 'STAFFING', 'EQUIPMENT', 'EMERGENCY', 'WEATHER_SAFETY', 'VENUE_LOGISTICS', 'OTHER']),
+                otherReasonText: z.string().trim().max(500).default(''),
+            }).parse(input);
+            assert(data.reasonCode !== 'OTHER' || data.otherReasonText.length >= 10, 'Other reasons require a short explanation (10–500 characters).');
+            const provider = b.items.find((item) => item.provider_user_id === user.id);
+            assert(provider, 'Booking not found.', 404);
+            await insert('provider_cancellation_reasons', {
+                id: id(), booking_id: b.id, requester_id: user.id, reason_code: data.reasonCode,
+                submitted_text: data.reasonCode === 'OTHER' ? data.otherReasonText : '',
+            });
+            text = data.reasonCode === 'OTHER' ? otherReasonPendingCopy : `Provider cancellation reason: ${providerCancellationReasons[data.reasonCode]}.`;
+        } else {
+            text = z.string().trim().min(5, 'Please give a short reason.').max(1000).parse(input);
+        }
         if (['CONFIRMED', 'IN_PROGRESS', 'COMPLETION_PENDING'].includes(b.status))
             return (await openDisputeInside(user, b, `Cancellation request: ${text}`));
         assert(['PENDING', 'ACCEPTED'].includes(b.status), 'This booking cannot be cancelled at this stage.');
@@ -220,6 +295,9 @@ export async function payBooking(user: User, bookingId: string, confirmed: unkno
     requireRole(user, 'CUSTOMER');
     assert(confirmed === true || confirmed === 'on', 'Confirm that this is a simulated payment.');
     return (await transaction(async () => {
+        await booking(bookingId, user);
+        const locked = await one<{ id: string }>('SELECT id FROM bookings WHERE id=? FOR UPDATE', bookingId);
+        assert(locked, 'Booking not found.', 404);
         const b = (await booking(bookingId, user));
         assert(b.status === 'ACCEPTED' && b.escrow_status === 'UNPAID', 'Payment requires an accepted, unpaid booking.');
         assert(b.event_date >= today(), 'The event date has passed. Please create a new request.');

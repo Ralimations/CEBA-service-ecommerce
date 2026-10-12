@@ -1,6 +1,8 @@
 import { test, before, after, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { PGlite } from '@electric-sql/pglite';
 import { migrate, closeDb, one, all, run, insert, id, now, settings } from '@/server/db';
 import { seed, day, DEMO_PASSWORD } from '@/database/seed';
 import { register, login, userFromToken, logout } from '@/server/auth';
@@ -11,6 +13,8 @@ import { deliverReminders } from '@/server/reminders';
 import { requireRole, checkTransition, rankFor, badgeEligible, DomainError, type User, } from '@/lib/domain';
 import * as b from '@/server/bookings';
 import * as m from '@/server/management';
+import { submitPublicAppeal, reviewPublicAppeal } from '@/server/public-support';
+import { cancellationReasonForBooking, reviewProviderCancellation, pendingProviderCancellationReasons } from '@/server/cancellations';
 if (process.env.POSTGRES_URL === undefined && existsSync('.env.local')) process.loadEnvFile('.env.local');
 assert.equal(process.env.TEST_ISOLATED, '1', 'Run npm test to use the disposable database; never run these fixtures on Supabase.');
 assert.equal(new URL(process.env.POSTGRES_URL!).hostname, '127.0.0.1');
@@ -72,6 +76,36 @@ afterEach(async () => (await closeDb()));
 test('PostgreSQL results use plain prototypes for React serialization', async () => {
     assert.equal(Object.getPrototypeOf((await one('SELECT id FROM users LIMIT 1'))), Object.prototype);
     assert.equal(Object.getPrototypeOf((await all('SELECT id FROM users LIMIT 1'))[0]), Object.prototype);
+});
+test('numbered additive migrations preserve existing rows and rerun idempotently', async () => {
+    const isolated = await PGlite.create();
+    try {
+        await isolated.exec(`
+          CREATE TABLE schema_migrations(version INTEGER PRIMARY KEY, applied_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
+          CREATE TABLE users(id TEXT PRIMARY KEY);
+          CREATE TABLE bookings(id TEXT PRIMARY KEY, status TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
+          CREATE TABLE booking_events(id TEXT PRIMARY KEY, booking_id TEXT NOT NULL REFERENCES bookings(id), actor_id TEXT NOT NULL REFERENCES users(id), event TEXT NOT NULL, detail TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
+          CREATE OR REPLACE FUNCTION soiree_append_only() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION '% is append-only', TG_TABLE_NAME; END; $$;
+          INSERT INTO users(id) VALUES('existing-user');
+          INSERT INTO bookings(id,status) VALUES('old-pending','PENDING');
+          INSERT INTO booking_events(id,booking_id,actor_id,event) VALUES('old-event','old-pending','existing-user','Existing event');
+        `);
+        const migration002 = readFileSync(resolve('database/migrations/002_public_account_support.sql'), 'utf8');
+        const migration003 = readFileSync(resolve('database/migrations/003_booking_response_and_cancellation_review.sql'), 'utf8');
+        await isolated.exec(migration002);
+        await isolated.exec(migration003);
+        await isolated.exec(migration002);
+        await isolated.exec(migration003);
+        const oldBooking = (await isolated.query<{ response_deadline_at: string | null; status: string }>("SELECT id,status,response_deadline_at FROM bookings WHERE id='old-pending'")).rows[0];
+        assert.deepEqual(oldBooking, { id: 'old-pending', status: 'PENDING', response_deadline_at: null });
+        assert.equal((await isolated.query("SELECT id,event FROM booking_events WHERE id='old-event'")).rows.length, 1);
+        assert.equal((await isolated.query("SELECT id FROM public_account_support WHERE id='nonexistent'")).rows.length, 0);
+        assert.equal((await isolated.query('SELECT version FROM schema_migrations WHERE version IN (2,3) ORDER BY version')).rows.length, 2);
+        const actorNullable = await isolated.query<{ is_nullable: string }>("SELECT is_nullable FROM information_schema.columns WHERE table_name='booking_events' AND column_name='actor_id'");
+        assert.equal(actorNullable.rows[0]?.is_nullable, 'YES');
+    } finally {
+        await isolated.close();
+    }
 });
 test('batched booking lists preserve customer and provider ownership and item snapshots', async () => {
     const a = await freshCustomer();
@@ -486,4 +520,110 @@ test('suspension invalidates sessions, settings persist, and foreign data is pre
     assert.equal(rankFor(3, (await settings())), 'BRONZE');
     (await assert.rejects(async () => (await m.saveSettings(customer, { platformFee: 0 }))));
     (await assert.rejects(async () => (await m.saveSettings(admin, { silver: 10, gold: 5, platinum: 3 }))));
+});
+test('public account appeals are rate-limited, admin-only, and never change account access', async () => {
+    const email = `${id()}@appeal.test`;
+    const input = { email, accountType: 'PROVIDER', category: 'SUSPENSION_REVIEW', message: 'Please review the status of my provider account and let me know what information is needed.' };
+    for (let i = 0; i < 4; i++)
+        assert.equal((await submitPublicAppeal(input)).message, (await submitPublicAppeal({ ...input, website: 'bot' })).message);
+    assert.equal((await one<{ n: number }>('SELECT COUNT(*)::int n FROM public_account_support WHERE submitted_email=?', email))!.n, 3);
+    const appeal = await one<{ id: string }>('SELECT id FROM public_account_support WHERE submitted_email=? LIMIT 1', email);
+    assert.ok(appeal);
+    await assert.rejects(() => reviewPublicAppeal(customer, { id: appeal!.id, status: 'RESOLVED', internalNotes: 'Reviewed.' }));
+    const response = await reviewPublicAppeal(admin, { id: appeal!.id, status: 'IN_REVIEW', internalNotes: 'Manual follow-up required.', followUpRequired: false });
+    assert.match(response.message, /No email was sent/);
+    assert.equal((await one<{ status: string }>('SELECT status FROM public_account_support WHERE id=?', appeal!.id))!.status, 'IN_REVIEW');
+    assert.equal((await one<{ follow_up_required: boolean }>('SELECT follow_up_required FROM public_account_support WHERE id=?', appeal!.id))!.follow_up_required, false);
+    assert.equal((await user(providerUser.id)).status, 'ACTIVE');
+});
+
+test('24-hour deadline expires a partially accepted bundle once and releases every reservation', async () => {
+    const c = await freshCustomer();
+    const other = await freshCustomer();
+    const candidate = (await bundles(day(170))).find((value) => value.ready && value.available);
+    assert.ok(candidate);
+    const bookingId = (await b.createBooking(c, {
+        bundleId: candidate.id, eventDate: day(170), eventType: 'Birthday', location: 'A test venue in Quezon City',
+        guests: 50, contact: '09170000000',
+    })).redirect.split('/').at(-1)!;
+    const items = await bookingItems(bookingId);
+    assert.ok(items.length > 1);
+    await b.acceptBooking(await user(items[0].provider_user_id), bookingId);
+    assert.ok(await one('SELECT 1 FROM reservations WHERE booking_id=?', bookingId));
+    const expiredAt = new Date(Date.now() + 1_000);
+    await run('UPDATE bookings SET response_deadline_at=? WHERE id=?', new Date(Date.now() - 1_000).toISOString(), bookingId);
+    assert.equal(await b.expireDueBookingsFor(other, expiredAt), 0, 'An unrelated customer cannot cause another account’s expiry operation.');
+    assert.equal((await booking(bookingId, c)).status, 'PENDING');
+    const results = await Promise.allSettled([
+        b.expirePendingBooking(bookingId, expiredAt),
+        b.acceptBooking(await user(items[1].provider_user_id), bookingId),
+        b.cancelBooking(c, bookingId, 'Our plans have changed.'),
+    ]);
+    assert.ok(results.some((value) => value.status === 'fulfilled'));
+    const result = await booking(bookingId, c);
+    assert.equal(result.status, 'CANCELLED');
+    assert.ok(result.expired_at);
+    assert.ok(result.items.every((item) => item.status === 'CANCELLED'));
+    assert.equal((await one<{ n: number }>('SELECT COUNT(*)::int n FROM reservations WHERE booking_id=?', bookingId))!.n, 0);
+    assert.equal((await one<{ n: number }>("SELECT COUNT(*)::int n FROM booking_events WHERE booking_id=? AND event='Booking request expired'", bookingId))!.n, 1);
+    assert.equal((await one<{ n: number }>("SELECT COUNT(*)::int n FROM notifications WHERE user_id=? AND title='Booking request expired'", c.id))!.n, 1);
+    for (const item of items)
+        assert.equal((await one<{ n: number }>("SELECT COUNT(*)::int n FROM notifications WHERE user_id=? AND title='Booking request expired'", item.provider_user_id))!.n, 1);
+    assert.equal(await b.expirePendingBooking(bookingId, expiredAt), false);
+});
+test('deadline leaves old pending records alone, releases voucher reservations, and never expires accepted bookings', async () => {
+    const c = await freshCustomer();
+    const previous = await one<{ id: string }>("SELECT id FROM bookings WHERE status='PENDING' AND response_deadline_at IS NULL LIMIT 1");
+    assert.ok(previous, 'Pre-migration pending records keep a NULL deadline.');
+    const first = await request(c, day(172), 'package-0-0-0', { voucher: 'WELCOME10' });
+    const expiredAt = new Date(Date.now() + 1_000);
+    await run('UPDATE bookings SET response_deadline_at=? WHERE id=?', new Date(expiredAt.getTime() - 1).toISOString(), first);
+    assert.equal(await b.expirePendingBooking(first, expiredAt), true);
+    const second = await request(c, day(173), 'package-0-0-0', { voucher: 'WELCOME10' });
+    assert.equal((await booking(second, c)).discount, (await booking(first, c)).discount);
+    const accepted = await request(c, day(174));
+    await b.acceptBooking(providerUser, accepted);
+    assert.equal(await b.expirePendingBooking(accepted, new Date(Date.now() + 25 * 60 * 60_000)), false);
+    assert.equal((await booking(accepted, c)).status, 'ACCEPTED');
+});
+test('provider cancellation reasons preserve bundle transitions and moderate Other text', async () => {
+    const c = await freshCustomer();
+    const fixedReasonBooking = await request(c, day(175));
+    await b.cancelBooking(providerUser, fixedReasonBooking, { reasonCode: 'SCHEDULING' });
+    const fixedReason = await one<{ reason_code: string; submitted_text: string }>('SELECT reason_code,submitted_text FROM provider_cancellation_reasons WHERE booking_id=?', fixedReasonBooking);
+    assert.deepEqual(fixedReason, { reason_code: 'SCHEDULING', submitted_text: '' });
+    assert.equal((await cancellationReasonForBooking(fixedReasonBooking, c))?.reason_code, 'SCHEDULING');
+
+    const bundleCandidate = (await bundles(day(176))).find((value) => value.ready && value.available && value.items.some((item) => item.user_id === providerUser.id));
+    assert.ok(bundleCandidate);
+    const bundleBooking = (await b.createBooking(c, {
+        bundleId: bundleCandidate.id, eventDate: day(176), eventType: 'Birthday', location: 'A test venue in Quezon City',
+        guests: 50, contact: '09170000000',
+    })).redirect.split('/').at(-1)!;
+    await b.cancelBooking(providerUser, bundleBooking, { reasonCode: 'WEATHER_SAFETY' });
+    const cancelledBundle = await booking(bundleBooking, c);
+    assert.equal(cancelledBundle.status, 'CANCELLED');
+    assert.ok(cancelledBundle.items.every((item) => item.status === 'CANCELLED'));
+
+    const bookingId = await request(c, day(171));
+    await assert.rejects(() => b.cancelBooking(providerUser, bookingId, { reasonCode: 'NOT_A_REASON' }));
+    await assert.rejects(() => b.cancelBooking(providerUser, bookingId, { reasonCode: 'OTHER', otherReasonText: 'short' }));
+    const privateText = 'We had an unexpected staffing problem and need help finding a replacement.';
+    await b.cancelBooking(providerUser, bookingId, { reasonCode: 'OTHER', otherReasonText: privateText });
+    assert.equal((await booking(bookingId, c)).status, 'CANCELLED');
+    const reason = await one<{ id: string }>('SELECT id FROM provider_cancellation_reasons WHERE booking_id=?', bookingId);
+    assert.ok(reason);
+    assert.equal((await cancellationReasonForBooking(bookingId, c))?.submitted_text, '');
+    assert.equal((await cancellationReasonForBooking(bookingId, providerUser))?.submitted_text, privateText);
+    assert.ok((await pendingProviderCancellationReasons(admin)).some((item) => item.id === reason!.id));
+    assert.equal((await one<{ n: number }>("SELECT COUNT(*)::int n FROM notifications WHERE user_id=? AND title='Booking cancelled' AND body LIKE '%'||?||'%'", c.id, privateText))!.n, 0);
+    await assert.rejects(() => reviewProviderCancellation(customer, { id: reason!.id, decision: 'APPROVED', customerVisibleReason: 'Professional explanation.' }));
+    const note = 'Reviewed the wording and approved a concise customer-facing version.';
+    await reviewProviderCancellation(admin, { id: reason!.id, decision: 'APPROVED', customerVisibleReason: 'Provider had a staffing issue.', moderationNote: note });
+    const customerView = await cancellationReasonForBooking(bookingId, c);
+    assert.equal(customerView?.submitted_text, '');
+    assert.equal(customerView?.customer_visible_reason, 'Provider had a staffing issue.');
+    assert.equal((await cancellationReasonForBooking(bookingId, providerUser))?.submitted_text, privateText);
+    assert.equal((await one<{ n: number }>('SELECT COUNT(*)::int n FROM provider_cancellation_reviews WHERE reason_id=?', reason!.id))!.n, 1);
+    await assert.rejects(() => run('UPDATE provider_cancellation_reasons SET submitted_text=\'removed\' WHERE id=?', reason!.id));
 });

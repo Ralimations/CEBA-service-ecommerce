@@ -290,12 +290,45 @@ test('provider creates a service and package, publishes, blocks calendar, and up
 });
 test('administrator handles support, refund, categories, and settings; mobile tables stay contained', async ({
   page,
+  browser,
 }) => {
   await login(page, 'admin');
   await page.screenshot({ path: 'artifacts/admin-desktop.png', fullPage: true });
+  await page.goto('/admin/users?q=Marco%20Dela%20Cruz');
+  await page.getByRole('button', { name: 'Suspend', exact: true }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Confirm', exact: true }).click();
+  await expect(page.getByText('Suspended', { exact: true })).toBeVisible();
   await page.goto('/admin/providers/provider-0');
   await expect(page.getByRole('heading', { name: 'Account and profile' })).toBeVisible();
+  await expect(page.getByText('Suspended', { exact: true })).toBeVisible();
   await expect(page.getByText('Booking history', { exact: false })).toBeVisible();
+  for (const width of [1440, 768, 390]) {
+    await page.setViewportSize({ width, height: width === 390 ? 844 : 1000 });
+    await noOverflow(page);
+    await page.screenshot({ path: `artifacts/admin-provider-detail-${width}.png`, fullPage: true });
+  }
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  const customerContext = await browser.newContext({ baseURL: 'http://127.0.0.1:3100' });
+  const customerPage = await customerContext.newPage();
+  await login(customerPage, 'customer');
+  await customerPage.goto('/admin/providers/provider-0');
+  await expect(customerPage).toHaveURL(/\/forbidden$/);
+  await customerContext.close();
+  const providerContext = await browser.newContext({ baseURL: 'http://127.0.0.1:3100' });
+  const providerPage = await providerContext.newPage();
+  await login(providerPage, 'provider2');
+  await providerPage.goto('/admin/providers/provider-0');
+  await expect(providerPage).toHaveURL(/\/forbidden$/);
+  await providerContext.close();
+  const anonymousContext = await browser.newContext({ baseURL: 'http://127.0.0.1:3100' });
+  const anonymousPage = await anonymousContext.newPage();
+  await anonymousPage.goto('/admin/providers/provider-0');
+  await expect(anonymousPage).toHaveURL(/\/login$/);
+  await anonymousContext.close();
+  const publicProfile = await page.goto('/providers/provider-0');
+  expect(publicProfile?.status()).toBe(404);
+  await page.goto('/browse');
+  await expect(page.getByRole('heading', { name: 'Find your kind of wonderful.' })).toBeVisible();
   await page.goto('/admin/support');
   await page
     .getByLabel('Administrator response', { exact: true })
@@ -330,4 +363,27 @@ test('administrator handles support, refund, categories, and settings; mobile ta
   await page.goto('/admin/escrow');
   await noOverflow(page);
   await page.screenshot({ path: 'artifacts/admin-mobile.png', fullPage: true });
+});
+
+test('anonymous account appeal submits with a generic confirmation and appears in admin review', async ({ browser }) => {
+  const requester = await browser.newPage({ baseURL: 'http://127.0.0.1:3100' });
+  const email = `appeal-${Date.now()}@example.test`;
+  await requester.goto('/support/appeal');
+  await requester.getByLabel('Account email', { exact: true }).fill(email);
+  await requester.getByLabel('Account type', { exact: true }).selectOption('PROVIDER');
+  await requester.getByLabel('What do you need help with?', { exact: true }).selectOption('SUSPENSION_REVIEW');
+  await requester.getByLabel('Message', { exact: true }).fill('Please review my account status. I can provide more information if required.');
+  await requester.getByRole('button', { name: 'Submit request' }).click();
+  await expect(requester.getByText(/Your request has been recorded/)).toBeVisible();
+  await requester.close();
+
+  const admin = await browser.newPage({ baseURL: 'http://127.0.0.1:3100' });
+  await login(admin, 'admin');
+  await admin.goto('/admin/support');
+  await expect(admin.getByText(email, { exact: true })).toBeVisible();
+  await expect(admin.getByText(/not emailed/)).toBeVisible();
+  await admin.getByLabel('Internal follow-up notes').fill('Review requested through the public account form.');
+  await admin.getByRole('button', { name: 'Save review' }).first().click();
+  await expect(admin.getByText(/account access was not changed/)).toBeVisible();
+  await admin.close();
 });

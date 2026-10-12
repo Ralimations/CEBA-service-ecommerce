@@ -4,6 +4,8 @@ import { z } from 'zod';
 import * as book from './bookings';
 import * as manage from './management';
 import { run, now, audit } from './db';
+import { reviewPublicAppeal } from './public-support';
+import { reviewProviderCancellation } from './cancellations';
 const str = (d: Record<string, unknown>, key: string) => z.string().min(1).max(5000).parse(d[key]);
 export async function executeAction(user: User | null, action: string, data: Record<string, unknown>) {
     requireRole(user, 'CUSTOMER', 'PROVIDER', 'ADMIN');
@@ -13,7 +15,7 @@ export async function executeAction(user: User | null, action: string, data: Rec
         case 'booking.accept':
             return (await book.acceptBooking(user, str(data, 'bookingId')));
         case 'booking.cancel':
-            return (await book.cancelBooking(user, str(data, 'bookingId'), str(data, 'reason')));
+            return (await book.cancelBooking(user, str(data, 'bookingId'), data));
         case 'booking.pay':
             return (await book.payBooking(user, str(data, 'bookingId'), data.confirmed));
         case 'booking.dispute':
@@ -82,6 +84,10 @@ export async function executeAction(user: User | null, action: string, data: Rec
             return (await manage.createTicket(user, data));
         case 'ticket.respond':
             return (await manage.respondTicket(user, data));
+        case 'appeal.review':
+            return (await reviewPublicAppeal(user, data));
+        case 'cancellation.review':
+            return (await reviewProviderCancellation(user, data));
         case 'notifications.read':
             if (data.id)
                 (await run('UPDATE notifications SET read_at=? WHERE id=? AND user_id=?', now(), str(data, 'id'), user.id));

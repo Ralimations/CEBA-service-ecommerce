@@ -9,6 +9,8 @@ import type { Voucher } from '@/types/models';
 import { Heading, Panel, DataTable, Field, Status, Empty } from '@/components/ui';
 import { ActionForm, ActionButton } from '@/components/action-form';
 import { money, dateLabel, today, human } from '@/lib/format';
+import { publicAppealsForAdmin } from '@/server/public-support';
+import { pendingProviderCancellationReasons } from '@/server/cancellations';
 export async function AdminVouchers() {
     const list = (await all<Voucher>('SELECT * FROM vouchers ORDER BY id DESC'));
     return (<>
@@ -355,7 +357,9 @@ export async function AdminEscrow({ user }: {
       </Panel>
     </>);
 }
-export async function AdminSupport() {
+export async function AdminSupport({ user }: { user: User }) {
+    const appeals = await publicAppealsForAdmin(user);
+    const cancellations = await pendingProviderCancellationReasons(user);
     const list = (await all<{
         id: string;
         subject: string;
@@ -369,6 +373,35 @@ export async function AdminSupport() {
     }>('SELECT t.*,u.name,u.email FROM support_tickets t JOIN users u ON u.id=t.user_id ORDER BY t.created_at DESC'));
     return (<>
       <Heading title="A person on the other side." description="Reply to questions the FAQ assistant could not solve."/>
+      <Heading eyebrow="PUBLIC ACCOUNT SUPPORT" title="Account review requests" description="Anonymous account-support intake. Review notes are internal and are not emailed."/>
+      {appeals.map((appeal) => (<Panel key={appeal.id}>
+          <div className="row between"><h2>{appeal.category === 'SUSPENSION_REVIEW' ? 'Suspension review' : 'Account help'}</h2><Status value={appeal.status}/></div>
+          <small>{appeal.submitted_email} · {human(appeal.account_type)} · {dateLabel(appeal.created_at)}</small>
+          {appeal.reference_number && <p><strong>Reference:</strong> {appeal.reference_number}</p>}
+          <p className="pre-line">{appeal.message}</p>
+          <p><strong>Follow-up needed:</strong> {appeal.follow_up_required ? 'Yes' : 'No'}</p>
+          <ActionForm action="appeal.review" data={{ id: appeal.id }}>
+            <Field label="Review status"><select name="status" defaultValue={appeal.status}>{['OPEN','IN_REVIEW','RESOLVED'].map((status) => <option key={status}>{status}</option>)}</select></Field>
+            <Field label="Internal follow-up notes" hint="These notes are not sent to the submitter."><textarea name="internalNotes" rows={3} maxLength={3000} defaultValue={appeal.internal_notes}/></Field>
+            <label className="check-label"><input type="checkbox" name="followUpRequired" defaultChecked={appeal.follow_up_required}/><span>Further follow-up is required</span></label>
+            <button className="btn">Save review</button>
+          </ActionForm>
+        </Panel>))}
+      {!appeals.length && <Empty title="No account-review requests yet.">Public account-support requests will appear here.</Empty>}
+      <Heading eyebrow="PROVIDER CANCELLATIONS" title="Review custom explanations" description="Unreviewed Other text is visible to administrators only. The original submission is retained after a decision."/>
+      {cancellations.map((reason) => <Panel key={reason.id}>
+        <div className="row between"><h2>{reason.title}</h2><Status value="IN_REVIEW"/></div>
+        <small>{reason.requester_name} · {dateLabel(reason.event_date)}</small>
+        <p className="pre-line">{reason.submitted_text}</p>
+        <Link href={`/bookings/${reason.booking_id}`} className="text-link">Open booking details</Link>
+        <ActionForm action="cancellation.review" data={{ id: reason.id }}>
+          <Field label="Moderation decision"><select name="decision" defaultValue="APPROVED"><option value="APPROVED">Approve for customer visibility</option><option value="REJECTED">Reject custom wording</option></select></Field>
+          <Field label="Approved customer explanation" hint="Used only when approving. The original wording remains preserved."><textarea name="customerVisibleReason" minLength={5} maxLength={500} rows={3}/></Field>
+          <Field label="Internal moderation note"><textarea name="moderationNote" maxLength={2000} rows={2}/></Field>
+          <button className="btn">Record moderation decision</button>
+        </ActionForm>
+      </Panel>)}
+      {!cancellations.length && <Empty title="No custom cancellation explanations need review.">Other explanations will wait here until an administrator reviews them.</Empty>}
       {list.map((t) => (<Panel key={t.id}>
           <div className="row between">
             <h2>{t.subject}</h2>
