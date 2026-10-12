@@ -5,7 +5,7 @@ import * as book from './bookings';
 import * as manage from './management';
 import { run, now, audit } from './db';
 const str = (d: Record<string, unknown>, key: string) => z.string().min(1).max(5000).parse(d[key]);
-export async function executeAction(user: User, action: string, data: Record<string, unknown>) {
+export async function executeAction(user: User | null, action: string, data: Record<string, unknown>) {
     requireRole(user, 'CUSTOMER', 'PROVIDER', 'ADMIN');
     switch (action) {
         case 'booking.create':

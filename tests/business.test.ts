@@ -5,7 +5,7 @@ import { migrate, closeDb, one, all, run, insert, id, now, settings } from '@/se
 import { seed, day, DEMO_PASSWORD } from '@/database/seed';
 import { register, login, userFromToken, logout } from '@/server/auth';
 import { executeAction } from '@/server/actions';
-import { available, booking, bookingItems, bookingsFor, bundles, services, provider } from '@/server/queries';
+import { available, booking, bookingItems, bookingsFor, bookingsForProviderAdmin, bundles, services, provider } from '@/server/queries';
 import { validateVoucher, rewardReferral } from '@/server/vouchers';
 import { deliverReminders } from '@/server/reminders';
 import { requireRole, checkTransition, rankFor, badgeEligible, DomainError, type User, } from '@/lib/domain';
@@ -88,6 +88,15 @@ test('batched booking lists preserve customer and provider ownership and item sn
     assert.ok(supplier.every(b => b.items.some(i => i.provider_user_id === providerUser.id)));
     const adminList = await bookingsFor(admin);
     assert.ok(adminList.some(b => b.id === aId) && adminList.some(b => b.id === otherId));
+});
+test('admin provider history is scoped to the requested provider and requires admin access', async () => {
+    const history = await bookingsForProviderAdmin(admin, 'provider-0');
+    assert.ok(history.length > 0);
+    assert.ok(history.every((item) => item.items.some((bookingItem) => bookingItem.provider_id === 'provider-0')));
+    await assert.rejects(
+        () => bookingsForProviderAdmin(customer, 'provider-0'),
+        (error: unknown) => error instanceof DomainError && error.status === 403,
+    );
 });
 test('visit-driven booking and featured expiry reminders are delivered only once', async () => {
     const c = (await freshCustomer());
@@ -457,7 +466,21 @@ test('suspension invalidates sessions, settings persist, and foreign data is pre
     (await m.adminUser(admin, c.id, 'SUSPENDED'));
     assert.equal((await userFromToken(session.token)), null);
     (await assert.rejects(async () => (await login({ email: c.email, password: DEMO_PASSWORD }))));
+    const bookingsBefore = (await one<{ n: number }>('SELECT COUNT(*)::int n FROM bookings'))!.n;
+    await assert.rejects(() => executeAction(null, 'booking.create', {
+        packageId: 'package-0-0-0', eventDate: day(150), eventType: 'Birthday',
+        location: 'A test venue in Quezon City', guests: 50, contact: '09170000000',
+    }), (error: unknown) => error instanceof DomainError && error.status === 401);
+    assert.equal((await one<{ n: number }>('SELECT COUNT(*)::int n FROM bookings'))!.n, bookingsBefore);
+    assert.equal((await userFromToken(session.token)), null, 'The pre-suspension token remains invalid after a direct booking attempt.');
     (await m.adminUser(admin, c.id, 'ACTIVE'));
+    const providerSession = await login({ email: providerUser.email, password: DEMO_PASSWORD });
+    (await m.adminUser(admin, providerUser.id, 'SUSPENDED'));
+    assert.equal((await userFromToken(providerSession.token)), null);
+    await assert.rejects(() => executeAction(null, 'calendar.save', {
+        date: day(150), status: 'UNAVAILABLE', note: 'Unavailable',
+    }), (error: unknown) => error instanceof DomainError && error.status === 401);
+    (await m.adminUser(admin, providerUser.id, 'ACTIVE'));
     (await m.saveSettings(admin, { platformFee: 7, silver: 4, gold: 9, platinum: 16 }));
     assert.equal((await settings()).platformFee, 7);
     assert.equal(rankFor(3, (await settings())), 'BRONZE');

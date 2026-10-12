@@ -269,7 +269,7 @@ export async function ProviderBundles({ user }: {
           <p>{b.description}</p>
           <p className="notice">
             Bundle discount: {b.discount_percent}%. Your agreed price is reduced proportionally by
-            this discount, any valid customer voucher, and the configured platform fee. Changing
+            this discount, any valid customer voucher, and the configured Service Fee. Changing
             participation returns the bundle to draft for administrator review.
           </p>
           <h3>
@@ -361,7 +361,7 @@ export async function ProviderEarnings({ user }: {
             'Booking',
             'Customer',
             'Gross allocation',
-            'Platform fee',
+            'Service Fee',
             'Supplier net',
             'Escrow',
         ]}>

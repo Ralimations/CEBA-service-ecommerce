@@ -191,7 +191,7 @@ export async function BookingDetail({ user, bookingId }: {
                 <strong>{money(b.total)}</strong>
               </div>
               <div>
-                <span>Platform fee (included)</span>
+                <span>Service Fee (included)</span>
                 <span>{money(b.platform_fee)}</span>
               </div>
               <div>
@@ -251,7 +251,7 @@ export async function BookingDetail({ user, bookingId }: {
       </div>
       <Panel>
         <h2>Escrow transaction history</h2>
-        {ledger.length ? (<DataTable headings={['Date', 'Transaction', 'Amount', 'Platform fee', 'Note']}>
+        {ledger.length ? (<DataTable headings={['Date', 'Transaction', 'Amount', 'Service Fee', 'Note']}>
             {ledger.map((t) => (<tr key={t.id}>
                 <td>{dateLabel(t.created_at)}</td>
                 <td>
@@ -330,7 +330,7 @@ export async function Checkout({ user, bookingId }: {
             <span>−{money(b.discount)}</span>
           </div>
           <div>
-            <span>Platform fee (included)</span>
+            <span>Service Fee (included)</span>
             <span>{money(b.platform_fee)}</span>
           </div>
           <div className="total">

@@ -10,6 +10,7 @@ export const settings = cache(readSettings);
 export const provider = cache(queries.provider);
 export const providerByUser = cache(queries.providerByUser);
 export const bookingsFor = cache(queries.bookingsFor);
+export const bookingsForProviderAdmin = cache(queries.bookingsForProviderAdmin);
 export const booking = cache(queries.booking);
 export const dashboardStats = cache(async (user: User) =>
   queries.statsForBookings(await bookingsFor(user), user),

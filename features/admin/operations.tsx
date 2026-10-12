@@ -309,7 +309,7 @@ export async function AdminEscrow({ user }: {
               </td>
               <td>
                 {money(b.total)}
-                <small>{money(b.platform_fee)} platform fee</small>
+                <small>{money(b.platform_fee)} Service Fee</small>
               </td>
               <td>
                 <Status value={b.escrow_status}/>

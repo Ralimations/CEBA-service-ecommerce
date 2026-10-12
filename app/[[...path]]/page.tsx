@@ -11,7 +11,7 @@ import { CustomerOverview, ProfilePage, VoucherWallet, Notifications, SupportPag
 import { BookingList, BookingDetail, Checkout } from '@/features/bookings/pages';
 import { ProviderOverview, ProviderProfile, ProviderCalendar, ProviderBundles, ProviderReviews, ProviderEarnings, ProviderSubscription, ProviderPromotions, } from '@/features/provider/pages';
 import { ProviderServices, ServiceEditor, ProviderPackages } from '@/features/provider/services';
-import { AdminOverview, AdminUsers, AdminProviders, AdminServices, AdminCategories, AdminBadges, AdminSettings, AdminAudit, } from '@/features/admin/pages';
+import { AdminOverview, AdminUsers, AdminProviders, AdminProviderDetail, AdminServices, AdminCategories, AdminBadges, AdminSettings, AdminAudit, } from '@/features/admin/pages';
 import { AdminBundles, AdminBundleEditor } from '@/features/admin/bundles';
 import { AdminVouchers, VoucherEditor, AdminSubscriptions, AdminPlacements, AdminDisputes, AdminEscrow, AdminSupport, } from '@/features/admin/operations';
 import { DomainError } from '@/lib/domain';
@@ -194,7 +194,7 @@ async function RouteContent({ params, searchParams }: Props) {
         }
     }
     else if (root === 'admin') {
-        if (itemId && !['bundles', 'vouchers'].includes(section))
+        if (itemId && !['bundles', 'vouchers', 'providers'].includes(section))
             notFound();
         switch (section) {
             case undefined:
@@ -204,7 +204,7 @@ async function RouteContent({ params, searchParams }: Props) {
                 page = <AdminUsers q={search.q} role={search.role}/>;
                 break;
             case 'providers':
-                page = <AdminProviders />;
+                page = itemId ? <AdminProviderDetail providerId={itemId} user={active}/> : <AdminProviders />;
                 break;
             case 'services':
                 page = <AdminServices q={search.q}/>;

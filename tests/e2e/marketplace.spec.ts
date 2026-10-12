@@ -293,6 +293,9 @@ test('administrator handles support, refund, categories, and settings; mobile ta
 }) => {
   await login(page, 'admin');
   await page.screenshot({ path: 'artifacts/admin-desktop.png', fullPage: true });
+  await page.goto('/admin/providers/provider-0');
+  await expect(page.getByRole('heading', { name: 'Account and profile' })).toBeVisible();
+  await expect(page.getByText('Booking history', { exact: false })).toBeVisible();
   await page.goto('/admin/support');
   await page
     .getByLabel('Administrator response', { exact: true })
@@ -315,14 +318,14 @@ test('administrator handles support, refund, categories, and settings; mobile ta
   await page.getByRole('button', { name: 'Create category' }).click();
   await expect(page.getByText('Category saved.', { exact: true })).toBeVisible();
   await page.goto('/admin/settings');
-  await page.getByLabel('Platform fee (%)', { exact: true }).fill('6');
+  await page.getByLabel('Service Fee (%)', { exact: true }).fill('6');
   await page.getByRole('button', { name: 'Save platform settings' }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Confirm', exact: true }).click();
   await expect(
     page.getByText('Platform rules saved. New quotes use the updated fee.'),
   ).toBeVisible();
   await page.reload();
-  await expect(page.getByLabel('Platform fee (%)', { exact: true })).toHaveValue('6');
+  await expect(page.getByLabel('Service Fee (%)', { exact: true })).toHaveValue('6');
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/admin/escrow');
   await noOverflow(page);
