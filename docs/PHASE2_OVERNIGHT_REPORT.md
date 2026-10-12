@@ -38,7 +38,7 @@ Implementation is committed on `phase2a/meeting-two-feedback`. No merge, push, d
 - Starting branch/commit: `main` / `ce56e4d`.
 - Feature branch: `phase2a/meeting-two-feedback`.
 - Implementation commit: `092b965` (`feat: inspect suspended providers and clarify service fee`).
-- Documentation commit: planned as `docs: add Phase 2 meeting analysis and backlog`.
+- Documentation commit: `4bbdc0e` (`docs: add Phase 2 meeting analysis and backlog`).
 - Working tree: sprint code is committed; the pre-existing untracked `documentation/` directory remains untouched.
 - Push: not performed.
 - Merge/deploy: not performed.
