@@ -46,7 +46,7 @@ Complexity uses S/M/L/XL as a relative engineering estimate. All testing that mu
 - **Acceptance criteria:** Display wording is consistent; internal `platform_fee` and `platformFee` stay intact; totals and supplier allocation do not change.
 - **Tests:** Business financial allocation tests; fee-settings UI assertion.
 
-### P1.3 Public suspended-account support intake — blocked pending channel/privacy approval
+### P1.3 Public suspended-account support intake — implemented, awaiting stakeholder acceptance
 
 - **Description:** Provide an actual support request channel without granting account access.
 - **Why:** Current public support is FAQ-only and ticket creation requires login.
@@ -56,7 +56,7 @@ Complexity uses S/M/L/XL as a relative engineering estimate. All testing that mu
 - **Acceptance criteria:** Generic response that reveals no account existence; validated lengths; server-side rate limits and spam trap; admin-only queue; no automatic reinstatement; no unsupported email address.
 - **Tests:** Isolated tests for limits, generic responses, abuse inputs, and admin authorization.
 
-### P1.4 Cancellation-reason moderation — design pending product choices
+### P1.4 Cancellation-reason moderation — implemented provisionally, awaiting product approval
 
 - **Description:** Replace provider-only free text with approved reason codes and admin review for custom text.
 - **Why:** Maintain professional customer-visible communication and an audit record.
@@ -68,7 +68,7 @@ Complexity uses S/M/L/XL as a relative engineering estimate. All testing that mu
 
 ## P2 — Phase 2 features
 
-### P2.1 Durable 24-hour response window
+### P2.1 Durable 24-hour response window — implemented provisionally; real PostgreSQL validation pending
 
 - **Description:** Add persisted response deadline and idempotent expiry processing for pending bookings.
 - **Why:** Requests currently remain pending indefinitely.
@@ -77,6 +77,25 @@ Complexity uses S/M/L/XL as a relative engineering estimate. All testing that mu
 - **Complexity:** L.
 - **Acceptance criteria:** No reservation before acceptance; deadline uses agreed timezone; expiration is durable/idempotent; only outstanding booking items expire as approved; customer/provider receive correct notices; retries do not duplicate transitions.
 - **Tests:** Concurrent accept/expire race, partial bundle response, retry, notification uniqueness, reservation cleanup.
+
+## Continuation status (2026-10-13)
+
+| Work item | Status | Evidence / remaining work |
+|---|---|---|
+| P0.1 stale-session security regression | **Completed** | Isolated business suite verifies invalidated customer/provider sessions and denied action dispatch. |
+| P0.2 deployed pilot incident review | **Blocked on operational access** | No pilot environment was queried. Obtain the incident build, logs, and authorized read-only verification separately. |
+| P1.1 Service Fee wording | **Completed** | Presentation-only change; provider allocation and internal fee names are unchanged. |
+| P1.2 suspended provider admin record | **Implemented, awaiting browser verification** | Role- and provider-scoped code exists. Isolated PGlite browser requests reset; verify all roles and viewports with real local PostgreSQL. |
+| P1.3 public account support | **Implemented, awaiting stakeholder acceptance** | Generic public intake, rate-limit/honeypot, admin-only queue and internal notes. No email delivery, no auto-reinstatement; stronger spam controls and operating owner remain open. |
+| P1.4 provider cancellation reason moderation | **Implemented provisionally, awaiting stakeholder acceptance** | One primary code; Other text private pending append-only admin decision. Near-event restrictions remain off. |
+| P2.1 response deadline and expiry | **Implemented provisionally, real PostgreSQL validation pending** | New rows get 24 hours; old pending rows remain deadline-null; due bundles expire atomically on relevant access/action. No scheduled reconciler. |
+| P2.2 late cancellation, fees, refunds and compensation | **Deferred** | Existing dispute behavior retained; no financial consequences or near-date lock activated. |
+| P2.3 customer-provider messaging | **Deferred** | Earlier priorities require stable browser/database verification and approved privacy/retention/moderation rules. |
+| P2.4 full dark/light theme and header concepts | **Deferred** | No incomplete theme switch shipped. |
+| P2.6 payment lifecycle specification | **Not started in this continuation** | Keep the current simulation and obtain finance/product approval before implementation. |
+| P3 loyalty/rewards | **Deferred** | Existing rank/referral rules remain unchanged; monetary reward values are not active. |
+
+The full PGlite business suite passed once after the continuation tests were added. The pre-existing append-only assertion has also failed intermittently in both baseline and feature runs; a real isolated PostgreSQL run remains a release gate. The Playwright failures are recorded in `PHASE2_IMPLEMENTATION_REPORT.md`.
 
 ### P2.2 Cancellation policy and dispute model
 

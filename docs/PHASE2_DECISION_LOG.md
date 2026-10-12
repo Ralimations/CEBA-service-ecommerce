@@ -22,8 +22,23 @@ No item below is approved policy unless explicitly marked approved. Recommendati
 | D-16 | Which transaction stages require QR scanning versus manual code entry? | 10 | Current codes are dual-party and item-scoped; camera scanning is not in the product. | Keep manual code; add QR display/scan; support both. | Keep tested manual entry; separately evaluate camera UX, permissions, and accessibility. | Open | Browser/device matrix and explicit scan requirements. |
 | D-17 | What visual tokens and header treatment should be approved? | 1, 10 | Theme and logo changes affect all routes and brand identity. | Emerald/cream tokens; exact contrast values; logo + name; logo + name + tagline. | Approve a token sheet and two header mockups before adding a switch or replacing identity. | Open | Brand assets, contrast review, preference/no-flash requirements. |
 
-## Approved in this branch
+## Implemented on this branch (not product policy)
 
 - “Service Fee” is a display label for the existing provider deduction. No schema key, percentage, amount, allocation, simulated escrow, or payout behavior changed.
 - Administrators may inspect suspended provider records through an admin-only route. Public marketplace exclusion remains in place.
 - Suspension defense regression coverage is added for stale sessions and API action dispatch. The reported production incident was not reproduced and no production data was tested.
+
+## Continuation implementation decisions (2026-10-13)
+
+These labels separate PDF requests from reversible engineering choices made for this branch. **None of the provisional items below is stakeholder-approved policy.**
+
+| Item | Status | Branch behavior | Stakeholder follow-up |
+|---|---|---|---|
+| Provider response window | Stakeholder-requested 24-hour response; expiry outcome is **Engineering provisional / awaiting approval** | New bookings get a UTC deadline 24 hours after submission. A pending multi-provider request expires as a whole unless all providers accepted. | Confirm whole-request expiry, notice wording, and extension/appeal behavior. |
+| Historical pending bookings | **Engineering provisional** | Existing pending rows retain `NULL` deadlines and do not expire automatically. | Decide whether to leave them untouched or plan a separately approved grace period. |
+| Cancellation reason choice | **Engineering provisional / awaiting approval** | One primary reason from seven proposed categories. | Approve category wording and single-versus-multiple selection. |
+| “Other” moderation | **Engineering provisional** | Custom text remains admin-only until approval; original submission and each moderation decision are retained. | Define moderator owner, response timing, and customer-visible wording. |
+| Public suspension appeal | Approved as an engineering priority in the continuation brief; **not identified as meeting-approved product policy** | Anonymous intake, generic confirmation, lightweight rate limiting, admin-only queue; no account status change or email delivery. | Confirm privacy copy, follow-up owner, and stronger spam/email requirements. |
+| Near-event cancellation lock | **Deferred** | No 48-hour restriction is active; existing cancellation/dispute transitions remain. | Choose a window and emergency escalation workflow before enabling a lock. |
+| Messaging and full theme switch | **Deferred** | No chat or partial dark mode was introduced. | Approve privacy/retention/moderation and complete theme/contrast direction. |
+| Fees, refunds, voucher compensation, and payment plan | **Deferred / not approved** | No monetary penalty, real refund, or payment gateway was added. | Resolve amounts, eligibility, exceptions, operations, and finance/legal requirements. |

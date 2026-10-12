@@ -54,7 +54,7 @@ Pending/accepted cancellation currently closes the booking and removes reservati
 ### Support, dispute, and messaging boundaries
 
 - **Customer ↔ provider:** proposed booking-attached threads, initially available after a request exists; one thread per booking/provider pair; participants can read/write only their own thread. Store immutable messages with sender and timestamps, derive unread counts from a per-participant last-read cursor, and use refresh-based updates first. Notify only the other participant and rate-limit writes. Add report/flagging and audited admin read access for dispute handling. Retention and deletion policy must be explicit.
-- **User ↔ SoiréeSource support:** existing authenticated tickets and `/admin/support`; the suspended-account path needs a separate anonymous intake or configured email. Anonymous requests must return generic success, avoid account-existence lookup, validate length, rate-limit by privacy-preserving keys, and enter an admin-only review queue. Do not promise a response channel until an owner and reply process are assigned.
+- **User ↔ SoiréeSource support:** existing authenticated tickets and `/admin/support`; the suspended-account path needs a separate anonymous intake or configured email. Anonymous requests must return generic success, avoid account-existence lookup, validate length, rate-limit by a hashed email key, and enter an admin-only review queue. That hash is a lightweight abuse key, not a strong privacy-preserving identifier. Do not promise a response channel until an owner and reply process are assigned.
 - **User ↔ FAQ assistant:** current FAQ support is informational. Do not merge it with human support or provider messaging. Any future AI assistant needs its own data-sharing, cost, escalation, and answer-quality approval.
 
 ### Loyalty comparison/design
@@ -82,3 +82,19 @@ Header treatments to present (do not replace the existing mark):
 - Disputes freeze held simulated escrow and require an administrator decision with audit entries.
 - Public provider content filters out suspended accounts; admin records now have a separate route in this branch.
 - The `documentation/` directory was already untracked at the start of work and was preserved.
+
+## Phase 2A continuation implementation (2026-10-13)
+
+The continuation brief selected reversible implementation defaults. These are engineering choices, not evidence that the meeting approved them.
+
+| Work | Stakeholder request / current behavior | Engineering implementation | Status |
+|---|---|---|---|
+| Public account support | Meeting page 5 says suspended providers cannot reach administrators because support requires login. | `/support/appeal` accepts a generic public request, stores it separately from authenticated tickets, rate-limits by normalized-email hash, and exposes it only in the admin support queue. Admin notes do not send email; submissions never change account status. | Implemented; awaiting stakeholder acceptance and real-browser/PostgreSQL verification. |
+| Response deadline | Meeting page 3 asks providers to answer within 24 hours; pending bookings currently reserve no availability. | New requests have a 24-hour UTC deadline. If a bundle is not fully accepted, the whole request expires, partial reservations are released, and all participants are notified. Existing pending rows retain `NULL` deadlines. Reconciliation occurs on relevant access/action; there is no cron. | Implemented provisionally; whole-bundle outcome and notification timing await approval. |
+| Provider cancellation reason | Pages 3–4 and 9 propose common reasons and moderated “Other” wording. The meeting’s checkbox example does not settle single versus multiple choice. | One primary reason is used provisionally. Other text is stored apart from customer-visible events; admins append a moderation decision before any approved summary is shown. | Implemented provisionally; reason list and moderation owner await approval. |
+| Near-event restriction | Page 9 mentions two days or one week and an emergency/dispute route. | No restriction is active. A 48-hour default would block existing actions without an approved full exception workflow. | Deferred. |
+| Messaging/theme/financial proposals | PDF discusses chat, theme, cancellation fees/refunds, 50% payment, vouchers, loyalty and evidence. | Existing payment/QR behavior stays as-is. No monetary fees/refunds, chat, partial theme, loyalty economics, or evidence uploads were activated. | Deferred. |
+
+### Test-harness findings
+
+The old append-only assertion failed in an isolated run on both unchanged `main` and the feature branch. It also passed in other retries. A diagnostic direct query against the same PGlite database showed the event rows remained persisted after the app-side read returned no row. Browser runs with a one-connection PGlite socket logged `ECONNRESET`; increasing socket multiplexing produced mismatched unnamed prepared-statement protocol errors. This identifies the PGlite wire/multiplexer path as unreliable under these scenarios, but does not prove real PostgreSQL semantics. No local PostgreSQL executable or Docker daemon was available. A dedicated PostgreSQL/browser verification remains required before release.

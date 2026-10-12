@@ -2,7 +2,7 @@
 
 ## Status
 
-Implementation is committed on `phase2a/meeting-two-feedback`. No merge, push, deployment, or production database mutation has been performed.
+The original Phase 2A work was committed before this continuation. Continuation implementation is committed as `899ada3` on `phase2a/meeting-two-feedback`; continuation documentation is being finalized separately. No merge, push, deployment, or production database mutation has been performed.
 
 ## Completed so far
 
@@ -43,3 +43,15 @@ Implementation is committed on `phase2a/meeting-two-feedback`. No merge, push, d
 - Push: not performed.
 - Merge/deploy: not performed.
 - Existing `documentation/` worktree content is preserved and excluded from this sprint's edits.
+
+## Continuation update — 2026-10-13
+
+The continuation report in `PHASE2_IMPLEMENTATION_REPORT.md` supersedes the earlier “remaining blockers” and validation counts above.
+
+- Public suspended-account appeal intake and an admin-only queue are implemented. The form uses a generic response, per-email rate limit and honeypot; it does not send email or change account status.
+- New bookings now receive a persisted 24-hour response deadline. Whole-bundle expiry, reservation cleanup, idempotency, system audit event, and participant notifications are implemented. Existing pending bookings retain a `NULL` deadline. Expiry is reconciled on relevant access/action, not by a configured background job.
+- Provider cancellation reasons use one provisional category. Custom “Other” text is private until an append-only admin decision; the original is retained. Near-event restrictions, financial penalties, refunds, and compensation remain off.
+- Additive migrations 002 and 003 are prepared in Git and reflected in the idempotent PostgreSQL schema. Neither has been applied to Supabase.
+- Final checks: `npm run typecheck`, `npm run lint`, `npm test` (29/29), and `npm run build` all passed. Browser attempts still fail on PGlite socket `ECONNRESET` or unnamed-statement protocol corruption. The admin provider-detail page is not yet browser-verified and no valid continuation screenshots were captured.
+- Real isolated PostgreSQL verification remains unavailable because no local PostgreSQL executables or accessible Docker daemon were present. No shared database was contacted.
+- Customer-provider messaging and theming remain deferred; payment, QR, fees, refund logic, and existing public cache behavior were not changed.
