@@ -1,0 +1,151 @@
+# Phase 2 backlog
+
+Complexity uses S/M/L/XL as a relative engineering estimate. All testing that mutates records must use the disposable PGlite harness or another verified isolated database.
+
+## P0 — Blocking/security
+
+### P0.1 Suspension authorization regression coverage — completed in this branch
+
+- **Description:** Verify database-backed session invalidation and direct action denial after suspending customer/provider accounts.
+- **Why:** A disabled UI does not protect the custom action API.
+- **Files:** `server/auth.ts`, `server/actions.ts`, `app/api/actions/route.ts`, `tests/business.test.ts`.
+- **Dependencies:** Isolated PGlite test harness.
+- **Complexity:** S.
+- **Acceptance criteria:** Old tokens resolve to no user; booking and provider mutations through the action boundary are denied; no records are created; active account functionality continues.
+- **Tests:** `npm test`; direct action invocation with a missing user and session lookup after suspension.
+
+### P0.2 Verify suspension behavior in the deployed pilot — pending operational follow-up
+
+- **Description:** Reproduce the client report against a specifically approved non-production account and confirm the deployed build/session behavior.
+- **Why:** Local code review cannot prove what build or browser state produced the report.
+- **Files:** No code change unless a reproducible defect is found.
+- **Dependencies:** A safe test account/environment; never use a real customer's account.
+- **Complexity:** S.
+- **Acceptance criteria:** Record app version, actor role, stale page/session condition, direct endpoint result, and no production-data mutation.
+- **Tests:** Browser plus direct request against an isolated environment.
+
+## P1 — Near-term improvements
+
+### P1.1 Admin inspection of suspended provider — implemented in this branch
+
+- **Description:** Add an authorized detail route with provider identity, business/contact details, moderation/profile state, services, and booking history.
+- **Why:** Admin users need historical context even when public marketplace visibility is removed.
+- **Files:** `app/[[...path]]/page.tsx`, `features/admin/pages.tsx`.
+- **Dependencies:** Existing admin role guard and `providers()`/`bookingsFor()` projections.
+- **Complexity:** M.
+- **Acceptance criteria:** Admin can inspect active and suspended records; public `/providers/:id` still excludes suspended accounts; missing accounts return not-found; no invented suspension reason is shown.
+- **Tests:** Existing business suite; browser checks at 1440, 768, and 390 px.
+
+### P1.2 Service-fee terminology — implemented in this branch
+
+- **Description:** Label the existing deduction “Service Fee” in customer/provider/admin presentation.
+- **Why:** Avoid implying an extra customer charge.
+- **Files:** `config/platform.ts`, `features/bookings/pages.tsx`, `features/provider/pages.tsx`, `features/admin/operations.tsx`, `features/admin/bundles.tsx`.
+- **Dependencies:** No financial-rule changes.
+- **Complexity:** S.
+- **Acceptance criteria:** Display wording is consistent; internal `platform_fee` and `platformFee` stay intact; totals and supplier allocation do not change.
+- **Tests:** Business financial allocation tests; fee-settings UI assertion.
+
+### P1.3 Public suspended-account support intake — blocked pending channel/privacy approval
+
+- **Description:** Provide an actual support request channel without granting account access.
+- **Why:** Current public support is FAQ-only and ticket creation requires login.
+- **Files:** Likely `app/api` route, `features/account/pages.tsx`, `server/management.ts`, `database/schema.postgres.sql`, `features/admin/operations.tsx`.
+- **Dependencies:** Named support owner/channel, privacy wording, anonymous rate-limit and spam policy, admin response process.
+- **Complexity:** M.
+- **Acceptance criteria:** Generic response that reveals no account existence; validated lengths; server-side rate limits and spam trap; admin-only queue; no automatic reinstatement; no unsupported email address.
+- **Tests:** Isolated tests for limits, generic responses, abuse inputs, and admin authorization.
+
+### P1.4 Cancellation-reason moderation — design pending product choices
+
+- **Description:** Replace provider-only free text with approved reason codes and admin review for custom text.
+- **Why:** Maintain professional customer-visible communication and an audit record.
+- **Files:** `server/bookings.ts`, `features/bookings/pages.tsx`, `features/admin/operations.tsx`, `database/schema.postgres.sql`, `types/models.ts`.
+- **Dependencies:** Approved reason list, single versus multiple selection, moderator decisions, customer visibility rules.
+- **Complexity:** L.
+- **Acceptance criteria:** Existing cancellation events remain; unreviewed text is private; approved reason is customer-facing; reviewer and timestamp are recorded; current booking/refund/dispute transitions do not change.
+- **Tests:** Reason validation, visibility state, notification content, historical note retention, isolated migration.
+
+## P2 — Phase 2 features
+
+### P2.1 Durable 24-hour response window
+
+- **Description:** Add persisted response deadline and idempotent expiry processing for pending bookings.
+- **Why:** Requests currently remain pending indefinitely.
+- **Files:** `server/bookings.ts`, `server/reminders.ts`, `database/schema.postgres.sql`, `types/models.ts`, customer/provider booking pages.
+- **Dependencies:** D-01 and D-02. Decide timeout outcome, bundle all-or-nothing behavior, notification content, and reservation cleanup.
+- **Complexity:** L.
+- **Acceptance criteria:** No reservation before acceptance; deadline uses agreed timezone; expiration is durable/idempotent; only outstanding booking items expire as approved; customer/provider receive correct notices; retries do not duplicate transitions.
+- **Tests:** Concurrent accept/expire race, partial bundle response, retry, notification uniqueness, reservation cleanup.
+
+### P2.2 Cancellation policy and dispute model
+
+- **Description:** Specify cancellation transitions, near-event constraints, admin review, compensation, and audit trail before implementation.
+- **Why:** The meeting proposes financial penalties and a lock without amounts or exceptions.
+- **Files:** `server/bookings.ts`, `lib/domain.ts`, schema, admin disputes, booking pages.
+- **Dependencies:** D-05 through D-11.
+- **Complexity:** XL.
+- **Acceptance criteria:** No unapproved fee/refund; each transition is explicit and auditable; provider/customer responsibilities and exceptions are documented; rollback is additive and safe.
+- **Tests:** State matrix, race and idempotency tests, ledger invariants, authorization.
+
+### P2.3 Booking-attached customer/provider messaging
+
+- **Description:** Design and deliver a low-cost refresh-based message thread attached to a booking.
+- **Why:** Customers need coordination without confusing marketplace messaging with platform support.
+- **Files:** New messaging model/routes plus booking detail and admin moderation views.
+- **Dependencies:** D-14, retention/privacy, notification and abuse policy.
+- **Complexity:** L.
+- **Acceptance criteria:** Only booking participants can read/write; admin access is audited; rate limits, unread state, report/retention behavior are documented; no paid chat service or realtime service is introduced.
+- **Tests:** Cross-booking access denial, spam limits, notification idempotency, retention visibility.
+
+### P2.4 Dark/light token foundation and header options
+
+- **Description:** Prepare approved emerald/cream/silver/dark tokens and two logo/header mockups; implement a switch only after contrast and no-flash behavior are approved.
+- **Why:** Establish brand identity without broad visual regressions.
+- **Files:** `app/globals.css`, `app/layout.tsx`, `components/navigation.tsx`, brand assets.
+- **Dependencies:** D-17 and accessibility review.
+- **Complexity:** M (tokens), L (complete mode switch).
+- **Acceptance criteria:** Keyboard-accessible state, preference persistence, no flash, contrast across public and admin routes, existing logo retained until approved.
+- **Tests:** Theme persistence, keyboard operation, contrast sampling, mobile screenshots.
+
+### P2.5 Handshake camera scanning feasibility
+
+- **Description:** Evaluate optional camera QR scanning while preserving manual entry and the current handshake state machine.
+- **Why:** The current protocol already has dual-party confirmation but the UI uses manual codes.
+- **Files:** `features/bookings/handshake.tsx`, `server/bookings.ts` only if protocol changes are justified.
+- **Dependencies:** D-16, browser/device and accessibility review.
+- **Complexity:** M.
+- **Acceptance criteria:** Only participants can issue/verify; both gates and counterparty requirements remain; expiration, attempts, and one-use behavior remain; no camera scanning is required to complete a booking.
+- **Tests:** Existing handshake suite plus camera fallback and permission denial UX.
+
+### P2.6 Payment lifecycle specification
+
+- **Description:** Map current simulation to proposed reservation fee, 50% payment, dual QR, refund, and payout lifecycle.
+- **Why:** Meeting language is ambiguous and real payment is out of scope.
+- **Files:** Design document first; future payment service and schema only after approval.
+- **Dependencies:** D-09 and D-10; finance/legal/compliance review.
+- **Complexity:** L.
+- **Acceptance criteria:** State diagram, amount schedule, idempotency keys, transaction boundaries, failure/rollback behavior, security and compliance dependencies; simulated-only implementation until approved.
+- **Tests:** Future ledger invariants and concurrent payment attempts in isolated DB.
+
+## P3 — Future growth
+
+### P3.1 Loyalty and referral rewards
+
+- **Description:** Compare current ranks/referrals with proposed check-ins, birthday rewards, tier vouchers, and rank-up referrals.
+- **Why:** Retain customer loyalty without inventing financial values.
+- **Files:** `server/vouchers.ts`, `lib/domain.ts`, `config/platform.ts`, account pages, schema.
+- **Dependencies:** D-12 and D-13.
+- **Complexity:** L.
+- **Acceptance criteria:** Approved thresholds, eligibility, point value, caps, expiry, birthday verification, stacking, and service SLA exist before rewards activate.
+- **Tests:** Rank boundaries, idempotent daily check-in, referral fraud and duplicate prevention, voucher ledger.
+
+### P3.2 Collateral/capital feature
+
+- **Description:** Research only; no sprint implementation.
+- **Why:** Page 10 describes a possible provider capital mechanism for a larger future product.
+- **Files:** None until a separate approved proposal.
+- **Dependencies:** Legal, finance, lending/credit and risk review.
+- **Complexity:** XL.
+- **Acceptance criteria:** Separate approved product and compliance plan; no user funds or liabilities created by this marketplace sprint.
+- **Tests:** Not applicable until scoped.
