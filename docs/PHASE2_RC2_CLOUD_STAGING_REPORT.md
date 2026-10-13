@@ -8,7 +8,7 @@ Audit and implementation date: 2026-10-14. RC2 work is local-only until the host
 - The untracked Emerald design reference pack and ZIP were preserved.
 - RC1's recorded baseline was 35 business tests, 13 Playwright tests, one feature-disabled browser check, migrations 002–008, axe across 39 routes in light/dark modes, production build/probes, and synthetic performance samples. Those remain RC1 evidence, not RC2 results.
 
-RC2 local commits: `a999196` (database target safeguards and isolated CI workflow) and `615bd46` (staging audit, runbook, acceptance, and demo documents). Ending branch remains `phase2a/meeting-two-feedback`; the local tracker says ahead four of `origin/phase2a/meeting-two-feedback`, but that remote-tracking ref could not be refreshed. Only the untracked Emerald pack and ZIP remain in the working tree. Nothing was pushed.
+Primary RC2 local commits: `a999196` (database target safeguards and isolated CI workflow) and `615bd46` (staging audit, runbook, acceptance, and demo documents). The branch remains `phase2a/meeting-two-feedback`; its remote-tracking ref could not be refreshed, so the reported ahead count is stale. Only the untracked Emerald pack and ZIP remain in the working tree. Nothing was pushed.
 
 ## Hosting and database audit
 
