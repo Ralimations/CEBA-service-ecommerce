@@ -11,6 +11,7 @@ import { FaqChat } from '@/components/faq-chat';
 import { money, dateLabel, human } from '@/lib/format';
 import { faqs } from '@/lib/faq';
 import { expireDueBookingsFor } from '@/server/bookings';
+import { loyaltyPreferences } from '@/server/loyalty';
 export async function CustomerOverview({ user }: {
     user: User;
 }) {
@@ -85,6 +86,7 @@ export async function ProfilePage({ user }: {
     user: User;
 }) {
     const loyalty = user.role === 'CUSTOMER' ? (await customerStats(user.id)) : null;
+    const experience = user.role === 'CUSTOMER' ? (await loyaltyPreferences(user)) : null;
     const rules = (await settings());
     const next = loyalty
         ? ([
@@ -135,6 +137,14 @@ export async function ProfilePage({ user }: {
               Explore your member vouchers
               <ArrowRight size={15}/>
             </Link>
+            {experience?.enabled && <div className="experience-panel">
+              <span className="eyebrow">EXPERIENCE POINTS · BETA</span>
+              <p><strong>{experience.summary.total} XP</strong> · nonredeemable and separate from voucher value</p>
+              <ActionForm action="loyalty.checkin">
+                <button className="btn secondary" type="submit">Check in today · +5 XP</button>
+              </ActionForm>
+              <small>One check-in per Philippine calendar day. Points cannot be withdrawn or spent.</small>
+            </div>}
           </Panel>)}
       </div>
       {loyalty && (<>

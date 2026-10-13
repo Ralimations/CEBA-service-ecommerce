@@ -4809,6 +4809,132 @@ progress::-moz-progress-bar {
     font-size: 12px;
   }
 }
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --ink: #e8efe9;
+  --cream: #111a16;
+  --paper: #1a2721;
+  --muted: #aab9af;
+  --line: #3b4e43;
+  --sage: #24352c;
+  --lime: #dbe5a6;
+  --forest-dark: #204738;
+  --gold: #d0b36c;
+  --red: #ff9b8b;
+  --shadow: 0 8px 30px #0006;
+}
+:root[data-theme='dark'] body { background: var(--cream); color: var(--ink); }
+:root[data-theme='dark'] p { color: #c0cdc4; }
+:root[data-theme='dark'] small { color: var(--muted); }
+:root[data-theme='dark'] .site-header,
+:root[data-theme='dark'] .site-footer,
+:root[data-theme='dark'] .sidebar,
+:root[data-theme='dark'] .panel,
+:root[data-theme='dark'] .service-card,
+:root[data-theme='dark'] .provider-card,
+:root[data-theme='dark'] .bundle-card,
+:root[data-theme='dark'] .booking-card,
+:root[data-theme='dark'] .metric-card,
+:root[data-theme='dark'] .table-wrap,
+:root[data-theme='dark'] .notification-item,
+:root[data-theme='dark'] .confirm-dialog,
+:root[data-theme='dark'] .faq-panel,
+:root[data-theme='dark'] .chat-panel,
+:root[data-theme='dark'] .auth-panel,
+:root[data-theme='dark'] .price-summary,
+:root[data-theme='dark'] .event-facts {
+  background-color: var(--paper) !important;
+  color: var(--ink);
+  border-color: var(--line);
+  box-shadow: var(--shadow);
+}
+:root[data-theme='dark'] input,
+:root[data-theme='dark'] select,
+:root[data-theme='dark'] textarea {
+  background: #121d18;
+  color: var(--ink);
+  border-color: var(--line);
+}
+:root[data-theme='dark'] input::placeholder,
+:root[data-theme='dark'] textarea::placeholder { color: #9aa99f; }
+:root[data-theme='dark'] .btn:not(.secondary):not(.danger) { background: #285446; color: #fff; }
+:root[data-theme='dark'] .btn.secondary,
+:root[data-theme='dark'] .icon-button,
+:root[data-theme='dark'] .mobile-menu { background: var(--sage); color: var(--ink); border-color: var(--line); }
+:root[data-theme='dark'] .text-link,
+:root[data-theme='dark'] .top-nav a,
+:root[data-theme='dark'] .sidebar nav a,
+:root[data-theme='dark'] .breadcrumbs a { color: #a9d9b9; }
+:root[data-theme='dark'] .top-nav a.active,
+:root[data-theme='dark'] .sidebar nav a.active { background: #29483a; color: #e8f5eb; }
+:root[data-theme='dark'] .data-table th,
+:root[data-theme='dark'] .data-table td,
+:root[data-theme='dark'] .timeline li { border-color: var(--line); color: var(--ink); }
+:root[data-theme='dark'] .notice { background: #283c31; color: #e4efe7; border-color: #587765; }
+:root[data-theme='dark'] .empty { background: var(--paper); color: var(--ink); }
+:root[data-theme='dark'] .form-message.success { background: #233d30; color: #d9f0df; }
+:root[data-theme='dark'] .form-message.error { background: #462925; color: #ffe3dc; }
+:root[data-theme='dark'] .booking-messages .message-bubble:not(.mine) { background: #26372e; color: var(--ink); }
+:root[data-theme='dark'] .booking-messages .message-bubble.mine { background: #285446; color: #fff; }
+:root[data-theme='dark'] .footer-note { border-color: var(--line); }
+:root[data-theme='dark'] .bundle-section,
+:root[data-theme='dark'] .provider-banner {
+  background: var(--paper);
+  color: var(--ink);
+  border-color: var(--line);
+}
+:root[data-theme='dark'] .bundle-intro h2,
+:root[data-theme='dark'] .provider-banner h2 { color: var(--ink); }
+:root[data-theme='dark'] .bundle-intro h2 em,
+:root[data-theme='dark'] .provider-banner .eyebrow { color: #a9d9b9; }
+:root[data-theme='dark'] .bundle-intro p,
+:root[data-theme='dark'] .bundle-line { color: #c0cdc4; }
+:root[data-theme='dark'] .bundle-intro .btn { border-color: var(--line); color: var(--ink); }
+.theme-toggle { flex-shrink: 0; }
+.experience-panel { margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--line); display: grid; gap: 10px; }
+.experience-panel .btn { justify-self: start; }
+.booking-messages {
+  margin-top: 20px;
+  display: grid;
+  gap: 16px;
+}
+.booking-messages .row > div p { margin-top: 4px; }
+.message-unread { color: var(--forest); font-weight: 600; }
+.message-list {
+  display: grid;
+  gap: 10px;
+  max-height: 420px;
+  overflow-y: auto;
+  padding: 4px;
+  overscroll-behavior: contain;
+}
+.message-bubble {
+  justify-self: start;
+  max-width: min(82%, 560px);
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px 14px 14px 4px;
+  background: var(--sage);
+  overflow-wrap: anywhere;
+}
+.message-bubble.mine {
+  justify-self: end;
+  border-color: var(--forest);
+  border-radius: 14px 14px 4px 14px;
+  background: var(--forest);
+  color: white;
+}
+.message-bubble .message-body { color: inherit; white-space: pre-wrap; }
+.message-bubble time { display: block; margin-top: 6px; font-size: 10px; opacity: .76; }
+.message-compose { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 8px; align-items: end; }
+.message-compose textarea { min-width: 0; }
+.message-compose small { grid-column: 1/-1; }
+.message-compose .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+@media (max-width: 560px) {
+  .message-bubble { max-width: 92%; }
+  .message-compose { grid-template-columns: 1fr; }
+  .message-compose .btn { justify-self: end; }
+}
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;

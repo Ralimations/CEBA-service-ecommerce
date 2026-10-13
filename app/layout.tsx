@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
+import Script from 'next/script';
 import Link from 'next/link';
 import { ArrowUpRight } from 'lucide-react';
 import { platform } from '@/config/platform';
@@ -26,7 +27,10 @@ async function SessionHeader() {
     return <Header user={user} unread={unread}/>;
 }
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-    return (<html lang="en" data-scroll-behavior="smooth">
+    return (<html lang="en" data-scroll-behavior="smooth" suppressHydrationWarning>
+      <head>
+        <Script id="soireesource-theme-init" strategy="beforeInteractive">{`(function(){try{var saved=localStorage.getItem('soiree-source-theme');var mode=saved==='dark'||saved==='light'?saved:(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.dataset.theme=mode}catch(_){document.documentElement.dataset.theme='light'}})()`}</Script>
+      </head>
       <body>
         <a className="skip-link" href="#main-content">
           Skip to content

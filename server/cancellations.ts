@@ -15,6 +15,29 @@ export const providerCancellationReasons = {
 export type ProviderCancellationReason = keyof typeof providerCancellationReasons;
 export const otherReasonPendingCopy = 'Your provider has requested cancellation. SoiréeSource is reviewing the explanation.';
 
+export function providerCancellationLockHours() {
+  const configured = Number(process.env.PROVIDER_CANCELLATION_LOCK_HOURS ?? '48');
+  return Number.isInteger(configured) && configured > 0 && configured <= 336 ? configured : 48;
+}
+
+export function providerCancellationWindowActive(eventDate: string, at = new Date()) {
+  const eventDayStart = new Date(`${eventDate}T00:00:00+08:00`).getTime();
+  if (!Number.isFinite(eventDayStart)) return false;
+  const eventDayEnd = eventDayStart + 24 * 60 * 60 * 1000;
+  const restrictedStart = eventDayStart - providerCancellationLockHours() * 60 * 60 * 1000;
+  return at.getTime() >= restrictedStart && at.getTime() < eventDayEnd;
+}
+
+export async function pendingEmergencyCancellationRequests(user: User) {
+  requireRole(user, 'ADMIN');
+  return all<{
+    id: string; booking_id: string; title: string; event_date: string; requester_name: string;
+    reason_code: ProviderCancellationReason; submitted_text: string; created_at: string;
+  }>(`SELECT r.id,r.booking_id,b.title,b.event_date,u.name requester_name,r.reason_code,r.submitted_text,r.created_at
+      FROM provider_cancellation_requests r JOIN bookings b ON b.id=r.booking_id JOIN users u ON u.id=r.requester_id
+      WHERE r.status='PENDING' ORDER BY r.created_at,r.id LIMIT 200`);
+}
+
 export async function pendingProviderCancellationReasons(user: User) {
   requireRole(user, 'ADMIN');
   return all<{

@@ -14,7 +14,12 @@ import { requireRole, checkTransition, rankFor, badgeEligible, DomainError, type
 import * as b from '@/server/bookings';
 import * as m from '@/server/management';
 import { submitPublicAppeal, reviewPublicAppeal } from '@/server/public-support';
-import { cancellationReasonForBooking, reviewProviderCancellation, pendingProviderCancellationReasons } from '@/server/cancellations';
+import { cancellationReasonForBooking, reviewProviderCancellation, pendingProviderCancellationReasons, pendingEmergencyCancellationRequests, providerCancellationWindowActive } from '@/server/cancellations';
+import { readConversation, sendBookingMessage } from '@/server/messages';
+import { awardCompletedBookingExperience, dailyCheckIn, experienceSummary, manilaDateKey, monetaryLoyaltyRewardsEnabled } from '@/server/loyalty';
+import { expireDueBookings } from '@/server/bookings';
+import { validCronAuthorization } from '@/server/cron-auth';
+import { recordSimulatedInstallment, simulatedInstallments, splitCentavos } from '@/server/deposits';
 if (process.env.POSTGRES_URL === undefined && existsSync('.env.local')) process.loadEnvFile('.env.local');
 assert.equal(process.env.TEST_ISOLATED, '1', 'Run npm test to use the disposable database; never run these fixtures on Supabase.');
 assert.equal(new URL(process.env.POSTGRES_URL!).hostname, '127.0.0.1');
@@ -626,4 +631,149 @@ test('provider cancellation reasons preserve bundle transitions and moderate Oth
     assert.equal((await cancellationReasonForBooking(bookingId, providerUser))?.submitted_text, privateText);
     assert.equal((await one<{ n: number }>('SELECT COUNT(*)::int n FROM provider_cancellation_reviews WHERE reason_id=?', reason!.id))!.n, 1);
     await assert.rejects(() => run('UPDATE provider_cancellation_reasons SET submitted_text=\'removed\' WHERE id=?', reason!.id));
+});
+
+test('48-hour provider cancellation window uses Philippine calendar boundaries and administrator review', async () => {
+    const eventStart = Date.parse('2030-05-10T00:00:00+08:00');
+    assert.equal(providerCancellationWindowActive('2030-05-10', new Date(eventStart - 48 * 60 * 60_000 - 1)), false);
+    assert.equal(providerCancellationWindowActive('2030-05-10', new Date(eventStart - 48 * 60 * 60_000)), true);
+    assert.equal(providerCancellationWindowActive('2030-05-10', new Date(eventStart + 23 * 60 * 60_000)), true);
+    assert.equal(providerCancellationWindowActive('2030-05-10', new Date(eventStart + 24 * 60 * 60_000)), false);
+
+    const c = await freshCustomer();
+    const rejectedDate = day(250);
+    const rejectedEventStart = Date.parse(`${rejectedDate}T00:00:00+08:00`);
+    const rejectedBooking = await request(c, rejectedDate);
+    await b.cancelBooking(providerUser, rejectedBooking, { reasonCode: 'EMERGENCY', otherReasonText: '' }, new Date(rejectedEventStart - 24 * 60 * 60_000));
+    const rejectedRequest = await one<{ id: string }>("SELECT id FROM provider_cancellation_requests WHERE booking_id=? AND status='PENDING'", rejectedBooking);
+    assert.ok(rejectedRequest);
+    assert.equal((await booking(rejectedBooking, c)).status, 'PENDING');
+    assert.ok((await pendingEmergencyCancellationRequests(admin)).some((item) => item.id === rejectedRequest!.id));
+    await assert.rejects(() => b.reviewProviderCancellationRequest(c, { id: rejectedRequest!.id, decision: 'APPROVED' }));
+    await assert.rejects(() => b.acceptBooking(providerUser, rejectedBooking));
+    await b.reviewProviderCancellationRequest(admin, { id: rejectedRequest!.id, decision: 'REJECTED', note: 'Booking remains active.' });
+    assert.equal((await booking(rejectedBooking, c)).status, 'PENDING');
+
+    const approvedDate = day(251);
+    const approvedEventStart = Date.parse(`${approvedDate}T00:00:00+08:00`);
+    const approvedBooking = await request(c, approvedDate);
+    await b.cancelBooking(providerUser, approvedBooking, { reasonCode: 'STAFFING', otherReasonText: '' }, new Date(approvedEventStart - 24 * 60 * 60_000));
+    const approvedRequest = await one<{ id: string }>("SELECT id FROM provider_cancellation_requests WHERE booking_id=? AND status='PENDING'", approvedBooking);
+    assert.ok(approvedRequest);
+    await b.reviewProviderCancellationRequest(admin, { id: approvedRequest!.id, decision: 'APPROVED', note: 'Urgent unavailability confirmed.' });
+    assert.equal((await booking(approvedBooking, c)).status, 'CANCELLED');
+    assert.equal((await one<{ n: number }>('SELECT COUNT(*)::int n FROM reservations WHERE booking_id=?', approvedBooking))!.n, 0);
+    assert.equal((await one<{ n: number }>('SELECT COUNT(*)::int n FROM provider_cancellation_request_reviews WHERE request_id=?', approvedRequest!.id))!.n, 1);
+
+    const paidDate = day(252);
+    const paidEventStart = Date.parse(`${paidDate}T00:00:00+08:00`);
+    const paidBooking = await request(c, paidDate);
+    await b.acceptBooking(providerUser, paidBooking);
+    await b.payBooking(c, paidBooking, true);
+    await b.cancelBooking(providerUser, paidBooking, { reasonCode: 'EMERGENCY', otherReasonText: '' }, new Date(paidEventStart - 24 * 60 * 60_000));
+    const paidRequest = await one<{ id: string }>("SELECT id FROM provider_cancellation_requests WHERE booking_id=? AND status='PENDING'", paidBooking);
+    assert.ok(paidRequest);
+    await b.reviewProviderCancellationRequest(admin, { id: paidRequest!.id, decision: 'APPROVED', note: 'Escalated to dispute review.' });
+    assert.equal((await booking(paidBooking, c)).status, 'DISPUTED');
+    assert.equal((await booking(paidBooking, c)).escrow_status, 'DISPUTED');
+    await assert.rejects(() => run('DELETE FROM provider_cancellation_request_reviews WHERE request_id=?', paidRequest!.id));
+});
+
+test('booking messages are private to each item, notify once, track reads, and reject suspended users', async () => {
+    const c = await freshCustomer();
+    const bookingId = await request(c, day(178));
+    const item = (await bookingItems(bookingId))[0]!;
+    const p = await user(item.provider_user_id);
+    const text = '<script>alert("safe text")</script> Please confirm the setup time.';
+    const sent = await sendBookingMessage(c, { itemId: item.id, body: text });
+    const providerView = await readConversation(p, item.id);
+    assert.equal(providerView.unread, 1);
+    assert.equal(providerView.messages[0]?.body, text);
+    assert.ok(providerView.messages[0]?.read_at);
+    assert.equal((await one<{ n: number }>("SELECT COUNT(*)::int n FROM notifications WHERE id=? AND user_id=?", `booking-message-${sent.messageId}`, p.id))!.n, 1);
+    await sendBookingMessage(p, { itemId: item.id, body: 'The team will arrive at the agreed setup window.' });
+    const customerView = await readConversation(c, item.id);
+    assert.equal(customerView.unread, 1);
+    assert.equal(customerView.messages.length, 2);
+    assert.equal(customerView.canSend, true);
+    const unrelatedProvider = await user('provider-user-1');
+    await assert.rejects(() => readConversation(unrelatedProvider, item.id));
+    await assert.rejects(() => sendBookingMessage(unrelatedProvider, { itemId: item.id, body: 'Cross-provider message' }));
+    await assert.rejects(() => sendBookingMessage(c, { itemId: item.id, body: '   ' }));
+    await assert.rejects(() => sendBookingMessage(c, { itemId: item.id, body: 'x'.repeat(4001) }));
+
+    await m.adminUser(admin, c.id, 'SUSPENDED');
+    await assert.rejects(() => readConversation({ ...c, status: 'SUSPENDED' }, item.id));
+    await assert.rejects(() => sendBookingMessage({ ...c, status: 'SUSPENDED' }, { itemId: item.id, body: 'Not allowed.' }));
+});
+
+test('loyalty beta awards idempotent Manila-day check-ins and referred rank milestones only', async () => {
+    const c = await freshCustomer();
+    const firstMoment = new Date('2030-05-09T15:59:59.000Z');
+    const nextDayMoment = new Date('2030-05-09T16:00:00.000Z');
+    assert.equal(manilaDateKey(firstMoment), '2030-05-09');
+    assert.equal(manilaDateKey(nextDayMoment), '2030-05-10');
+    await dailyCheckIn(c, firstMoment);
+    await dailyCheckIn(c, firstMoment);
+    await dailyCheckIn(c, nextDayMoment);
+    assert.equal((await experienceSummary(c.id)).total, 10);
+    await assert.rejects(() => dailyCheckIn(providerUser, firstMoment));
+    assert.equal(monetaryLoyaltyRewardsEnabled, false);
+
+    const referrer = await freshCustomer();
+    const referred = await freshCustomer(referrer.referral_code);
+    await run("INSERT INTO settings(key,value) VALUES('silver',1),('gold',2),('platinum',3) ON CONFLICT(key) DO UPDATE SET value=EXCLUDED.value");
+    const bookingId = await request(referred, day(260));
+    await confirm(referred, bookingId);
+    await finishItem(referred, (await bookingItems(bookingId))[0]!.id);
+    await awardCompletedBookingExperience(referred.id, bookingId);
+    assert.equal((await experienceSummary(referred.id)).completedBookings, 1);
+    assert.equal((await experienceSummary(referrer.id)).referralMilestones, 1);
+    assert.equal((await one<{ points: number }>("SELECT points FROM experience_ledger WHERE user_id=? AND event_type='REFERRAL_RANK_UP'", referrer.id))?.points, 25);
+    assert.equal((await one<{ n: number }>("SELECT COUNT(*)::int n FROM experience_ledger WHERE user_id=? AND event_type='BOOKING_COMPLETED'", referred.id))!.n, 1);
+});
+
+test('scheduled expiry uses the same idempotent reconciliation and requires its bearer secret', async () => {
+    const secret = 'isolated-cron-test-secret-at-least-32-chars';
+    assert.equal(validCronAuthorization(`Bearer ${secret}`, secret), true);
+    assert.equal(validCronAuthorization('Bearer incorrect', secret), false);
+    assert.equal(validCronAuthorization(null, secret), false);
+    assert.equal(validCronAuthorization(`Bearer ${secret}`, ''), false);
+    const c = await freshCustomer();
+    const bookingId = await request(c, day(240));
+    const dueAt = new Date(Date.now() + 1000);
+    await run('UPDATE bookings SET response_deadline_at=? WHERE id=?', new Date(dueAt.getTime() - 1).toISOString(), bookingId);
+    const result = await expireDueBookings(dueAt, 10);
+    assert.ok(result.checked >= 1);
+    assert.ok(result.expired >= 1);
+    assert.equal((await booking(bookingId, c)).status, 'CANCELLED');
+    assert.equal(await expireDueBookings(dueAt, 10).then((again) => again.expired), 0);
+});
+
+test('deposit prototype handles odd centavos, bundle allocations, and retries without touching escrow', async () => {
+    assert.equal(Math.ceil(10001 / 2), 5001);
+    assert.deepEqual(splitCentavos(5001, [{ id: 'a', amount: 3333 }, { id: 'b', amount: 6668 }]), [
+      { itemId: 'a', amount: 1667 }, { itemId: 'b', amount: 3334 },
+    ]);
+    const c = await freshCustomer();
+    const bundleCandidate = (await bundles(day(265))).find((value) => value.ready && value.available);
+    assert.ok(bundleCandidate);
+    const bookingId = (await b.createBooking(c, {
+      bundleId: bundleCandidate.id, eventDate: day(265), eventType: 'Wedding', location: 'A test venue in Manila',
+      guests: 50, contact: '09170000000',
+    })).redirect.split('/').at(-1)!;
+    for (const item of await bookingItems(bookingId)) await b.acceptBooking(await user(item.provider_user_id), bookingId);
+    const before = await booking(bookingId, c);
+    const deposit = await recordSimulatedInstallment(c, bookingId, 'DEPOSIT');
+    assert.equal(deposit.amount, Math.ceil(before.total / 2));
+    assert.equal((await one<{ n: number }>('SELECT SUM(amount)::int n FROM simulated_deposit_entries WHERE booking_id=? AND stage=\'DEPOSIT\'', bookingId))!.n, deposit.amount);
+    await assert.rejects(() => recordSimulatedInstallment(c, bookingId, 'DEPOSIT'));
+    const balance = await recordSimulatedInstallment(c, bookingId, 'BALANCE');
+    assert.equal(balance.amount, before.total - deposit.amount);
+    assert.equal((await simulatedInstallments(bookingId)).reduce((sum, row) => sum + row.amount, 0), before.total);
+    assert.equal((await booking(bookingId, c)).status, 'ACCEPTED');
+    assert.equal((await booking(bookingId, c)).escrow_status, 'UNPAID');
+    assert.equal((await one<{ n: number }>('SELECT COUNT(*)::int n FROM payments WHERE booking_id=?', bookingId))!.n, 0);
+    assert.equal((await one<{ n: number }>('SELECT COUNT(*)::int n FROM escrow_transactions WHERE booking_id=?', bookingId))!.n, 0);
+    assert.ok((await one<{ n: number }>('SELECT COUNT(DISTINCT booking_item_id)::int n FROM simulated_deposit_entries WHERE booking_id=?', bookingId))!.n > 1);
 });

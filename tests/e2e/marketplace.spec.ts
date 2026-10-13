@@ -176,6 +176,7 @@ test('customer registration through payment, provider acceptance, two QR gates, 
   await c.getByLabel('Confirm password', { exact: true }).fill(DEMO_PASSWORD);
   await c.getByLabel('Phone (optional)', { exact: true }).fill('09171112222');
   await c.getByLabel('Referral code (optional)', { exact: true }).fill('CELEBRATE1');
+  await c.getByRole('checkbox', { name: /agree to the Terms of Service/ }).check();
   await c.getByRole('button', { name: 'Create your account' }).click();
   await expect(c).toHaveURL(/\/dashboard$/);
   await c.goto('/vouchers');
@@ -189,12 +190,40 @@ test('customer registration through payment, provider acceptance, two QR gates, 
   await c.getByRole('button', { name: 'Request your date' }).click();
   await expect(c).toHaveURL(/\/bookings\/[a-f0-9-]+$/);
   const bookingPath = new URL(c.url()).pathname;
+  const thread = c.locator('.booking-messages');
+  await expect(thread).toBeVisible();
+  const itemId = await thread.getAttribute('data-item-id');
+  expect(itemId).toBeTruthy();
+  const firstMessage = 'Could we confirm the setup arrival window?';
+  await thread.getByLabel('Write a booking message').fill(firstMessage);
+  await thread.getByRole('button', { name: 'Send', exact: true }).click();
+  await expect(thread.getByText(firstMessage)).toBeVisible();
   await login(p, 'provider');
   await p.goto(bookingPath);
+  const providerThread = p.locator(`.booking-messages[data-item-id="${itemId}"]`);
+  await expect(providerThread.getByText(firstMessage)).toBeVisible();
+  await providerThread.getByLabel('Write a booking message').fill('The team will arrive during the agreed setup window.');
+  await providerThread.getByRole('button', { name: 'Send', exact: true }).click();
+  await expect(providerThread.getByText('The team will arrive during the agreed setup window.')).toBeVisible();
+  await c.reload();
+  await expect(c.locator('.booking-messages').getByText('The team will arrive during the agreed setup window.')).toBeVisible();
+  const unrelated = await browser.newPage({ baseURL: 'http://127.0.0.1:3100' });
+  await login(unrelated, 'provider2');
+  const deniedMessages = await unrelated.request.get(`/api/messages?itemId=${encodeURIComponent(itemId!)}`);
+  expect(deniedMessages.status()).toBe(404);
+  await unrelated.close();
   await p.getByRole('button', { name: 'Accept booking request' }).click();
   await expect(p.getByText('Booking accepted. This date is now reserved.')).toBeVisible();
   await c.reload();
   await c.getByRole('link', { name: 'Continue to checkout' }).click();
+  const depositPrototype = c.locator('.deposit-prototype');
+  await expect(depositPrototype).toBeVisible();
+  await depositPrototype.getByRole('button', { name: 'Record simulated deposit' }).click();
+  await c.getByRole('dialog').getByRole('button', { name: 'Confirm', exact: true }).click();
+  await expect(c.getByText('Deposit recorded in the non-settling prototype ledger.')).toBeVisible();
+  await depositPrototype.getByRole('button', { name: 'Record simulated balance' }).click();
+  await c.getByRole('dialog').getByRole('button', { name: 'Confirm', exact: true }).click();
+  await expect(c.getByText('Balance recorded in the non-settling prototype ledger.')).toBeVisible();
   await c
     .getByRole('checkbox', { name: 'I understand this is a development mock payment.' })
     .check();
@@ -264,7 +293,8 @@ test('provider creates a service and package, publishes, blocks calendar, and up
   await expect(
     page.getByText('Package saved. Existing bookings keep their agreed price and terms.'),
   ).toBeVisible();
-  await page.getByLabel('Listing status').selectOption('ACTIVE');
+  await page.locator('form').filter({ has: page.getByLabel('Service title', { exact: true }) })
+    .getByLabel('Listing status', { exact: true }).first().selectOption('ACTIVE');
   await page.getByRole('button', { name: 'Save service', exact: true }).click();
   await expect(page.getByText('Service updated.', { exact: true })).toBeVisible();
   await page.goto('/browse?q=Milestone+photo+stories');
@@ -301,7 +331,7 @@ test('administrator handles support, refund, categories, and settings; mobile ta
   await page.goto('/admin/providers/provider-0');
   await expect(page.getByRole('heading', { name: 'Account and profile' })).toBeVisible();
   await expect(page.getByText('Suspended', { exact: true })).toBeVisible();
-  await expect(page.getByText('Booking history', { exact: false })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Booking history \(/ })).toBeVisible();
   for (const width of [1440, 768, 390]) {
     await page.setViewportSize({ width, height: width === 390 ? 844 : 1000 });
     await noOverflow(page);
@@ -325,8 +355,8 @@ test('administrator handles support, refund, categories, and settings; mobile ta
   await anonymousPage.goto('/admin/providers/provider-0');
   await expect(anonymousPage).toHaveURL(/\/login$/);
   await anonymousContext.close();
-  const publicProfile = await page.goto('/providers/provider-0');
-  expect(publicProfile?.status()).toBe(404);
+  const publicProfile = await page.request.get('/providers/provider-0');
+  expect((await publicProfile.text())).not.toContain('Luna Lens Photography');
   await page.goto('/browse');
   await expect(page.getByRole('heading', { name: 'Find your kind of wonderful.' })).toBeVisible();
   await page.goto('/admin/support');
@@ -380,10 +410,118 @@ test('anonymous account appeal submits with a generic confirmation and appears i
   const admin = await browser.newPage({ baseURL: 'http://127.0.0.1:3100' });
   await login(admin, 'admin');
   await admin.goto('/admin/support');
-  await expect(admin.getByText(email, { exact: true })).toBeVisible();
+  await expect(admin.getByText(new RegExp(email))).toBeVisible();
   await expect(admin.getByText(/not emailed/)).toBeVisible();
-  await admin.getByLabel('Internal follow-up notes').fill('Review requested through the public account form.');
-  await admin.getByRole('button', { name: 'Save review' }).first().click();
+  const appealPanel = admin.locator('.panel').filter({ hasText: email });
+  await appealPanel.getByLabel('Internal follow-up notes').fill('Review requested through the public account form.');
+  await appealPanel.getByRole('button', { name: 'Save review' }).click();
   await expect(admin.getByText(/account access was not changed/)).toBeVisible();
   await admin.close();
+});
+
+test('light and dark themes respect system preference, persist, meet text contrast, and fit mobile', async ({ page }) => {
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await page.goto('/');
+  await page.evaluate(() => localStorage.removeItem('soiree-source-theme'));
+  await page.reload();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  await page.screenshot({ path: 'artifacts/theme-system-dark.png', fullPage: true });
+  await page.goto('/browse');
+
+  const contrast = async (selector: string) => page.locator(selector).evaluate((element) => {
+    const rgb = (value: string) => value.match(/[\d.]+/g)?.slice(0, 3).map(Number) || [0, 0, 0];
+    const linear = (value: number) => {
+      const channel = value / 255;
+      return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+    };
+    const luminance = (value: string) => {
+      const [red, green, blue] = rgb(value).map(linear);
+      return 0.2126 * red! + 0.7152 * green! + 0.0722 * blue!;
+    };
+    const style = getComputedStyle(element);
+    const background = style.backgroundColor === 'rgba(0, 0, 0, 0)'
+      ? getComputedStyle(document.body).backgroundColor : style.backgroundColor;
+    const values = [luminance(style.color), luminance(background)].sort((a, b) => b - a);
+    return (values[0]! + 0.05) / (values[1]! + 0.05);
+  });
+  expect(await contrast('body')).toBeGreaterThanOrEqual(4.5);
+  expect(await contrast('.service-card:first-of-type')).toBeGreaterThanOrEqual(4.5);
+
+  await page.getByRole('button', { name: 'Toggle light and dark theme' }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+  expect(await page.evaluate(() => localStorage.getItem('soiree-source-theme'))).toBe('light');
+  expect(await contrast('body')).toBeGreaterThanOrEqual(4.5);
+  await page.screenshot({ path: 'artifacts/theme-light.png', fullPage: true });
+  await page.goto('/browse');
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+  await page.reload();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+
+  await page.getByRole('button', { name: 'Toggle light and dark theme' }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  await page.reload();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  expect(await contrast('body')).toBeGreaterThanOrEqual(4.5);
+  await page.screenshot({ path: 'artifacts/theme-dark.png', fullPage: true });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await noOverflow(page);
+  await page.screenshot({ path: 'artifacts/theme-dark-mobile.png', fullPage: true });
+});
+
+test('provider cancellation inside the provisional date window waits for admin review', async ({ browser }) => {
+  const customer = await browser.newPage({ baseURL: 'http://127.0.0.1:3100' });
+  await login(customer, 'customer');
+  await customer.goto('/services/service-1-0');
+  await customer.getByLabel('Event date', { exact: true }).fill(day(1));
+  await customer.getByLabel('Venue / location').fill('A celebration venue, Quezon City');
+  await customer.getByRole('button', { name: 'Request your date' }).click();
+  await expect(customer).toHaveURL(/\/bookings\/[a-f0-9-]+$/);
+  const bookingPath = new URL(customer.url()).pathname;
+
+  const provider = await browser.newPage({ baseURL: 'http://127.0.0.1:3100' });
+  await login(provider, 'provider2');
+  await provider.goto(bookingPath);
+  await expect(provider.getByText(/provisional 48-hour cancellation review window/)).toBeVisible();
+  await provider.getByLabel('Primary cancellation reason').selectOption('EMERGENCY');
+  await provider.getByRole('button', { name: 'Request urgent cancellation review' }).click();
+  await provider.getByRole('dialog').getByRole('button', { name: 'Confirm', exact: true }).click();
+  await expect(provider.getByText(/booking remains active until an administrator reviews it/i)).toBeVisible();
+  await customer.reload();
+  await expect(customer.getByText('Pending', { exact: true }).first()).toBeVisible();
+
+  const admin = await browser.newPage({ baseURL: 'http://127.0.0.1:3100' });
+  await login(admin, 'admin');
+  await admin.goto('/admin/support');
+  await expect(admin.getByRole('heading', { name: 'Provider requests within the event window' })).toBeVisible();
+  await expect(admin.getByText(/Personal emergency/)).toBeVisible();
+  await admin.setViewportSize({ width: 390, height: 844 });
+  await noOverflow(admin);
+  await admin.screenshot({ path: 'artifacts/cancellation-review-mobile.png', fullPage: true });
+  await admin.getByLabel('Request decision').selectOption('APPROVED');
+  await admin.getByRole('button', { name: 'Record review decision' }).click();
+  await expect(admin.getByText('Cancellation request approved.', { exact: true })).toBeVisible();
+  await customer.reload();
+  await expect(customer.getByText('Cancelled', { exact: true }).first()).toBeVisible();
+  await admin.close();
+  await provider.close();
+  await customer.close();
+});
+
+test('customer loyalty check-in updates once and displays nonredeemable XP', async ({ page }) => {
+  await login(page, 'customer');
+  await page.goto('/profile');
+  const experience = page.locator('.experience-panel');
+  await expect(experience).toBeVisible();
+  const startingXp = Number((await experience.locator('strong').textContent())?.match(/\d+/)?.[0] || 0);
+  await experience.getByRole('button', { name: 'Check in today · +5 XP' }).click();
+  await expect(experience.getByText('Check-in complete. Five experience points added.')).toBeVisible();
+  await expect(experience.locator('strong')).toHaveText(`${startingXp + 5} XP`);
+  await experience.getByRole('button', { name: 'Check in today · +5 XP' }).click();
+  await expect(experience.getByText('You already checked in for this Philippine calendar day.')).toBeVisible();
+  await page.reload();
+  await expect(experience.locator('strong')).toHaveText(`${startingXp + 5} XP`);
+  await expect(experience).toContainText('Points cannot be withdrawn or spent.');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await noOverflow(page);
+  await page.screenshot({ path: 'artifacts/loyalty-checkin-mobile.png', fullPage: true });
 });

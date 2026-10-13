@@ -9,7 +9,9 @@ import { BookingCard } from '@/components/cards';
 import { money, dateLabel, human, today } from '@/lib/format';
 import { Handshake } from './handshake';
 import { expireDueBookingsFor, expirePendingBooking } from '@/server/bookings';
-import { cancellationReasonForBooking, providerCancellationReasons, otherReasonPendingCopy } from '@/server/cancellations';
+import { cancellationReasonForBooking, providerCancellationReasons, otherReasonPendingCopy, providerCancellationWindowActive, providerCancellationLockHours } from '@/server/cancellations';
+import { BookingMessages } from './messages';
+import { simulatedDepositsEnabled, simulatedInstallments } from '@/server/deposits';
 export async function BookingList({ user, status = '', base = '/bookings', }: {
     user: User;
     status?: string;
@@ -61,6 +63,8 @@ export async function BookingDetail({ user, bookingId }: {
     const customer = user.role === 'CUSTOMER';
     const admin = user.role === 'ADMIN';
     const mine = b.items.find((i) => i.provider_user_id === user.id);
+    const providerCancellationRestricted = user.role === 'PROVIDER' &&
+      process.env.FEATURE_PROVIDER_CANCELLATION_POLICY === 'true' && providerCancellationWindowActive(b.event_date);
     const cancellationReason = await cancellationReasonForBooking(b.id, user);
     const events = (await all<{
         id: string;
@@ -142,6 +146,9 @@ export async function BookingDetail({ user, bookingId }: {
                     {item.status === 'CONFIRMED' && (<Handshake itemId={item.id} gate="START" issue={customer}/>)}{' '}
                     {['IN_PROGRESS', 'COMPLETION_PENDING'].includes(item.status) && (<Handshake itemId={item.id} gate="COMPLETE" issue={!customer}/>)}
                   </>)}
+              {process.env.FEATURE_BOOKING_MESSAGING === 'true' &&
+                (customer || item.provider_user_id === user.id || (admin && b.status === 'DISPUTED')) &&
+                <BookingMessages itemId={item.id} viewerId={user.id}/>}
               {customer &&
                 b.status === 'COMPLETED' &&
                 (item.review_id ? (<Badge tone="green">Your review is published</Badge>) : (<details className="review-form">
@@ -243,7 +250,11 @@ export async function BookingDetail({ user, bookingId }: {
           </Panel>
           {!admin && !['COMPLETED', 'CANCELLED', 'DISPUTED'].includes(b.status) && (<Panel>
               <h3>Need to change the plan?</h3>
-              <ActionForm action="booking.cancel" data={{ bookingId: b.id }} confirm={b.escrow_status === 'UNPAID'
+              {providerCancellationRestricted &&
+                <p className="notice">This event is inside the provisional {providerCancellationLockHours()}-hour cancellation review window. The boundary is based on the event calendar date in Philippine time. An urgent request goes to an administrator; the booking stays active during review.</p>}
+              <ActionForm action="booking.cancel" data={{ bookingId: b.id }} confirm={providerCancellationRestricted
+                ? 'Submit an urgent cancellation review request. The booking stays active until an administrator reviews it.'
+                : b.escrow_status === 'UNPAID'
                 ? 'Cancel this request and release its reserved dates?'
                 : 'Request cancellation and freeze held escrow for administrator review?'}>
                 {customer ? <Field label="Cancellation reason"><textarea name="reason" minLength={5} maxLength={1000} required rows={3}/></Field> : <>
@@ -252,7 +263,9 @@ export async function BookingDetail({ user, bookingId }: {
                   <Field label="Other explanation" hint="Required only when Other is selected. An administrator must review it before customers can see it."><textarea name="otherReasonText" maxLength={500} rows={3}/></Field>
                 </>}
                 <button className="btn secondary full" type="submit">
-                  {b.escrow_status === 'UNPAID'
+                  {providerCancellationRestricted
+                    ? 'Request urgent cancellation review'
+                    : b.escrow_status === 'UNPAID'
                 ? customer
                     ? 'Cancel request'
                     : 'Reject / cancel request'
@@ -318,6 +331,7 @@ export async function Checkout({ user, bookingId }: {
     bookingId: string;
 }) {
     const b = (await booking(bookingId, user));
+    const installments = simulatedDepositsEnabled ? await simulatedInstallments(b.id) : [];
     return (<div className="checkout-layout">
       <Heading eyebrow="ONE STEP CLOSER" title="Make your date official." description="Review the details, then reserve your celebration."/>
       <Panel>
@@ -379,6 +393,17 @@ export async function Checkout({ user, bookingId }: {
               View booking
             </Link>
           </div>)}
+        {simulatedDepositsEnabled && b.status === 'ACCEPTED' && b.escrow_status === 'UNPAID' && <div className="panel deposit-prototype">
+          <h3>Installment flow prototype</h3>
+          <p>Development-only accounting preview. Entries do not create payments, confirm the booking, hold escrow, or transfer money. The 50% deposit is rounded up to the next centavo.</p>
+          <p>Prototype deposit: <strong>{money(Math.ceil(b.total / 2))}</strong> · remaining balance: <strong>{money(b.total - Math.ceil(b.total / 2))}</strong></p>
+          <p>Recorded prototype entries: {installments.length ? installments.map((entry) => `${entry.stage.toLowerCase()} ${money(entry.amount)}`).join(' · ') : 'none'}</p>
+          {!installments.some((entry) => entry.stage === 'DEPOSIT') ? <ActionForm action="booking.deposit-prototype" data={{ bookingId: b.id, stage: 'DEPOSIT' }} confirm="Record a simulated 50% deposit in the separate prototype ledger? This does not pay or confirm your booking.">
+            <button className="btn secondary" type="submit">Record simulated deposit</button>
+          </ActionForm> : !installments.some((entry) => entry.stage === 'BALANCE') ? <ActionForm action="booking.deposit-prototype" data={{ bookingId: b.id, stage: 'BALANCE' }} confirm="Record the remaining simulated balance in the prototype ledger? This does not pay or confirm your booking.">
+            <button className="btn secondary" type="submit">Record simulated balance</button>
+          </ActionForm> : <p className="notice">Both prototype milestones are recorded. Use the standard simulated checkout above to confirm the booking.</p>}
+        </div>}
         <TrustNote />
       </Panel>
     </div>);

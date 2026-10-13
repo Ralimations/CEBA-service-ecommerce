@@ -6,6 +6,8 @@ import * as manage from './management';
 import { run, now, audit } from './db';
 import { reviewPublicAppeal } from './public-support';
 import { reviewProviderCancellation } from './cancellations';
+import { dailyCheckIn } from './loyalty';
+import { recordSimulatedInstallment } from './deposits';
 const str = (d: Record<string, unknown>, key: string) => z.string().min(1).max(5000).parse(d[key]);
 export async function executeAction(user: User | null, action: string, data: Record<string, unknown>) {
     requireRole(user, 'CUSTOMER', 'PROVIDER', 'ADMIN');
@@ -18,6 +20,8 @@ export async function executeAction(user: User | null, action: string, data: Rec
             return (await book.cancelBooking(user, str(data, 'bookingId'), data));
         case 'booking.pay':
             return (await book.payBooking(user, str(data, 'bookingId'), data.confirmed));
+        case 'booking.deposit-prototype':
+            return (await recordSimulatedInstallment(user, str(data, 'bookingId'), z.enum(['DEPOSIT', 'BALANCE']).parse(data.stage)));
         case 'booking.dispute':
             return (await book.openDispute(user, str(data, 'bookingId'), str(data, 'reason')));
         case 'handshake.issue':
@@ -88,6 +92,10 @@ export async function executeAction(user: User | null, action: string, data: Rec
             return (await reviewPublicAppeal(user, data));
         case 'cancellation.review':
             return (await reviewProviderCancellation(user, data));
+        case 'cancellation-request.review':
+            return (await book.reviewProviderCancellationRequest(user, data));
+        case 'loyalty.checkin':
+            return (await dailyCheckIn(user));
         case 'notifications.read':
             if (data.id)
                 (await run('UPDATE notifications SET read_at=? WHERE id=? AND user_id=?', now(), str(data, 'id'), user.id));

@@ -10,7 +10,7 @@ import { Heading, Panel, DataTable, Field, Status, Empty } from '@/components/ui
 import { ActionForm, ActionButton } from '@/components/action-form';
 import { money, dateLabel, today, human } from '@/lib/format';
 import { publicAppealsForAdmin } from '@/server/public-support';
-import { pendingProviderCancellationReasons } from '@/server/cancellations';
+import { pendingEmergencyCancellationRequests, pendingProviderCancellationReasons, providerCancellationReasons } from '@/server/cancellations';
 export async function AdminVouchers() {
     const list = (await all<Voucher>('SELECT * FROM vouchers ORDER BY id DESC'));
     return (<>
@@ -360,6 +360,7 @@ export async function AdminEscrow({ user }: {
 export async function AdminSupport({ user }: { user: User }) {
     const appeals = await publicAppealsForAdmin(user);
     const cancellations = await pendingProviderCancellationReasons(user);
+    const emergencyRequests = await pendingEmergencyCancellationRequests(user);
     const list = (await all<{
         id: string;
         subject: string;
@@ -388,6 +389,19 @@ export async function AdminSupport({ user }: { user: User }) {
           </ActionForm>
         </Panel>))}
       {!appeals.length && <Empty title="No account-review requests yet.">Public account-support requests will appear here.</Empty>}
+      <Heading eyebrow="URGENT CANCELLATION REVIEW" title="Provider requests within the event window" description="The provisional restricted window is measured against the event calendar date in Philippine time. No money is charged or refunded."/>
+      {emergencyRequests.map((request) => <Panel key={request.id}>
+        <div className="row between"><h2>{request.title}</h2><Status value="IN_REVIEW"/></div>
+        <small>{request.requester_name} · {dateLabel(request.event_date)} · {providerCancellationReasons[request.reason_code]}</small>
+        {request.submitted_text && <p className="pre-line">{request.submitted_text}</p>}
+        <Link href={`/bookings/${request.booking_id}`} className="text-link">Open booking details</Link>
+        <ActionForm action="cancellation-request.review" data={{ id: request.id }}>
+          <Field label="Request decision"><select name="decision" defaultValue=""><option value="" disabled>Choose an outcome</option><option value="APPROVED">Approve cancellation request</option><option value="REJECTED">Keep booking active</option></select></Field>
+          <Field label="Review note"><textarea name="note" maxLength={2000} rows={3}/></Field>
+          <button className="btn">Record review decision</button>
+        </ActionForm>
+      </Panel>)}
+      {!emergencyRequests.length && <Empty title="No urgent cancellation requests.">Requests inside the provisional event window will appear here.</Empty>}
       <Heading eyebrow="PROVIDER CANCELLATIONS" title="Review custom explanations" description="Unreviewed Other text is visible to administrators only. The original submission is retained after a decision."/>
       {cancellations.map((reason) => <Panel key={reason.id}>
         <div className="row between"><h2>{reason.title}</h2><Status value="IN_REVIEW"/></div>
