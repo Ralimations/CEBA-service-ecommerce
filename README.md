@@ -10,6 +10,8 @@ A local event services marketplace for customers, providers, and administrators.
 
 See [PHASE1_STATUS.md](PHASE1_STATUS.md) for the feature-by-feature status and assumptions, and [CHANGELOG_PHASE1.md](CHANGELOG_PHASE1.md) for major changes.
 
+Phase 2 implementation is in the review branch `phase2a/meeting-two-feedback`; prepared migrations are not applied to production. See [the combined Phase 2 report](docs/PHASE2_COMBINED_IMPLEMENTATION_REPORT.md) for feature flags, provisional decisions, and reproducible isolated PostgreSQL/browser validation (`npm run verify:phase2`).
+
 ## Installation
 
 Requirements: **Node.js 24 or newer** and npm. A Supabase project and server-only PostgreSQL connection string are required. Run commands from the project directory.

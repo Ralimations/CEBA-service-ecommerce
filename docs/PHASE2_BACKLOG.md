@@ -1,5 +1,9 @@
 # Phase 2 backlog
 
+## Combined sprint implementation snapshot — 2026-10-13
+
+The earlier planning entries below describe the state when drafted. The current branch now implements: 24-hour booking expiry and a prepared protected daily cron; configurable 48-hour provider cancellation review; persisted item-scoped booking messaging; light/dark/system theming; nonredeemable loyalty experience points; and a separate simulated installment ledger. Validation is summarized in `docs/PHASE2_COMBINED_IMPLEMENTATION_REPORT.md`. These business values remain provisional. No production migration or deployment has occurred.
+
 Complexity uses S/M/L/XL as a relative engineering estimate. All testing that mutates records must use the disposable PGlite harness or another verified isolated database.
 
 ## P0 — Blocking/security

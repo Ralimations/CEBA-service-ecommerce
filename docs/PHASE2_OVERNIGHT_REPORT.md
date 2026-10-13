@@ -46,6 +46,10 @@ The original Phase 2A work was committed before this continuation. Continuation 
 
 ## Continuation update — 2026-10-13
 
+### Combined Phase 2A + 2B sprint — final verification
+
+The detailed implementation and completion matrix are in `PHASE2_COMBINED_IMPLEMENTATION_REPORT.md`, which supersedes earlier validation status below. Final isolated verification on PostgreSQL 17.11 passed TypeScript, ESLint, migrations 002–007 (twice), business tests 34/34, production build, and Playwright 10/10. The disposable container was stopped and the report/log artifacts are under `artifacts/`. The branch includes item-scoped booking messaging, persisted light/dark/system preference, nonredeemable loyalty XP, a separate non-settling simulated installment ledger, 48-hour cancellation review, and a protected daily cron configuration. No production migration, push, merge, or deployment occurred. A dev-browser React hydration warning involving an unexpected input caret-color style remains documented in the combined report; the feature flag, policy, accessibility, bundle messaging, and cron activation limitations remain review items.
+
 The continuation report in `PHASE2_IMPLEMENTATION_REPORT.md` supersedes the earlier “remaining blockers” and validation counts above.
 
 - Public suspended-account appeal intake and an admin-only queue are implemented. The form uses a generic response, per-email rate limit and honeypot; it does not send email or change account status.

@@ -24,6 +24,16 @@ No item below is approved policy unless explicitly marked approved. Recommendati
 
 ## Implemented on this branch (not product policy)
 
+### Combined sprint additions — 2026-10-13
+
+- New booking response deadlines use 24 hours; bounded expiry is shared by page/action access and a bearer-protected `/api/cron/expire-bookings` endpoint. `vercel.json` prepares a daily schedule; activation requires a future deployment and `CRON_SECRET`.
+- The near-event provider restriction is provisionally 48 hours from PHT event-date midnight through the event day. Emergency requests wait for administrator review. The lock can be disabled with `FEATURE_PROVIDER_CANCELLATION_POLICY`.
+- Booking messages are item-scoped, participant-only, refresh-based, capped at 4,000 characters, rate-limited, and disabled unless `FEATURE_BOOKING_MESSAGING=true`. Admin read access is limited to disputed bookings.
+- Theme preference supports light, dark, or system. Existing logo assets are retained.
+- Loyalty experience points use provisional check-in/completion/referral-milestone values, are nonredeemable, and are disabled unless `FEATURE_LOYALTY_BETA=true`; monetary loyalty rewards remain off.
+- Deposit simulation is an independent prototype ledger. It does not create payment rows or alter booking/escrow state. `FEATURE_SIMULATED_DEPOSITS` defaults off; no real payment integration exists.
+- Scheduled expiry, rank thresholds, 50% deposit timing/rounding, cancellation categories/window, message retention, and theme tokens need stakeholder review. None is represented as approved policy.
+
 - “Service Fee” is a display label for the existing provider deduction. No schema key, percentage, amount, allocation, simulated escrow, or payout behavior changed.
 - Administrators may inspect suspended provider records through an admin-only route. Public marketplace exclusion remains in place.
 - Suspension defense regression coverage is added for stale sessions and API action dispatch. The reported production incident was not reproduced and no production data was tested.
