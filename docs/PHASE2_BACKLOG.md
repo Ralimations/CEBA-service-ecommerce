@@ -93,10 +93,10 @@ Complexity uses S/M/L/XL as a relative engineering estimate. All testing that mu
 | Emerald Editorial Luxury visual system | **Implemented for core public, customer, provider, and admin surfaces** | Responsive token and component refinement plus homepage redesign. Route-specific dark screenshots and visual-diff automation remain incomplete. |
 | Bundle messaging browser coverage | **Implemented in E2E** | Two booking-item conversations, customer/provider exchange, unrelated provider/customer denial, mobile screenshot, long input rejection and script-like text escaping are exercised. |
 | Message reporting | **Implemented provisionally** | Migration 008, participant-only reports, one report per sender/message, focused admin queue and audited review. Retention and moderation policy remain open. |
-| Pre-deadline reminders | **Implemented, visit-driven** | Stable-ID reminders appear within a two-hour deadline window when a participant visits. No exact-time scheduler guarantee; cron remains inactive. |
+| Pre-deadline reminders | **Implemented: visit-driven and scheduled** | Stable-ID in-app notices are visit-driven within two hours and scheduled daily for the 26-hour advance window; cron configuration remains to be verified in preview. |
 | Birthday/rank monetary benefits | **Deferred** | Feature flag remains off. Business values, birthday data handling, stacking, caps and abuse prevention are not approved. |
-| WCAG 2.2 AA audit | **Partial** | Basic automated contrast sampling and semantics/focus review; no axe-core/full route audit. |
-| Performance regression measurements | **Not run** | No before/after query-count or latency claim for this design pass. |
+| WCAG 2.2 AA audit | **Automated audit passed** | axe-core found zero violations across 39 public/customer/provider/admin routes in light and dark. Manual keyboard and assistive-technology review remains. |
+| Performance measurements | **Local synthetic samples captured** | Production mode sampled 19 routes/variants at 16–84 ms with 0–13 SQL queries. No before/after comparison or production-capacity claim. |
 
 | Work item | Status | Evidence / remaining work |
 |---|---|---|

@@ -12,12 +12,12 @@ if (!pglite && !realPostgres)
   throw new Error('Refusing to start the browser test server without an explicitly isolated test database.');
 process.env.NEXT_DIST_DIR = '.next-test';
 process.env.APP_ORIGIN = 'http://127.0.0.1:3100';
-process.env.FEATURE_BOOKING_MESSAGING = 'true';
-process.env.FEATURE_PROVIDER_CANCELLATION_POLICY = 'true';
-process.env.PROVIDER_CANCELLATION_LOCK_HOURS = '48';
-process.env.FEATURE_LOYALTY_BETA = 'true';
-process.env.FEATURE_LOYALTY_MONETARY_REWARDS = 'false';
-process.env.FEATURE_SIMULATED_DEPOSITS = 'true';
+process.env.FEATURE_BOOKING_MESSAGING ??= 'true';
+process.env.FEATURE_PROVIDER_CANCELLATION_POLICY ??= 'true';
+process.env.PROVIDER_CANCELLATION_LOCK_HOURS ??= '48';
+process.env.FEATURE_LOYALTY_BETA ??= 'true';
+process.env.FEATURE_LOYALTY_MONETARY_REWARDS ??= 'false';
+process.env.FEATURE_SIMULATED_DEPOSITS ??= 'true';
 (await migrate());
 (await seed());
 (await closeDb());

@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
-import { mkdirSync } from 'node:fs';
+import AxeBuilder from '@axe-core/playwright';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { day, DEMO_PASSWORD } from '@/database/seed';
 mkdirSync('artifacts', { recursive: true });
 async function login(page: Page, role: string) {
@@ -197,13 +198,14 @@ test('marketplace discovery and responsive desktop, tablet, and mobile layouts',
       ),
   ).toBe(0);
   await noOverflow(page);
-  await page.screenshot({ path: 'artifacts/home-desktop.png', fullPage: true });
-  await page.setViewportSize({ width: 768, height: 1024 });
-  await noOverflow(page);
-  await page.screenshot({ path: 'artifacts/home-tablet.png', fullPage: true });
-  await page.setViewportSize({ width: 390, height: 844 });
-  await noOverflow(page);
-  await page.screenshot({ path: 'artifacts/home-mobile.png', fullPage: true });
+  for (const [width, height, name] of [
+    [1440, 1000, 'home-desktop'], [1024, 900, 'home-1024'], [768, 1024, 'home-tablet'],
+    [430, 932, 'home-430'], [390, 844, 'home-mobile'], [360, 800, 'home-360'],
+  ] as const) {
+    await page.setViewportSize({ width, height });
+    await noOverflow(page);
+    await page.screenshot({ path: `artifacts/${name}.png`, fullPage: true });
+  }
   await page.getByRole('button', { name: 'Open menu', exact: true }).click();
   await page
     .getByRole('navigation', { name: 'Main navigation' })
@@ -328,7 +330,7 @@ test('customer registration through payment, provider acceptance, two QR gates, 
   expect(deniedMessages.status()).toBe(404);
   await unrelated.close();
   await p.getByRole('button', { name: 'Accept booking request' }).click();
-  await expect(p.getByText('Booking accepted. This date is now reserved.')).toBeVisible();
+  await expect(p.getByText('All providers accepted', { exact: true })).toBeVisible();
   await c.reload();
   await c.getByRole('link', { name: 'Continue to checkout' }).click();
   const depositPrototype = c.locator('.deposit-prototype');
@@ -447,8 +449,8 @@ test('administrator handles support, refund, categories, and settings; mobile ta
   await expect(page.getByRole('heading', { name: 'Account and profile' })).toBeVisible();
   await expect(page.getByText('Suspended', { exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: /Booking history \(/ })).toBeVisible();
-  for (const width of [1440, 768, 390]) {
-    await page.setViewportSize({ width, height: width === 390 ? 844 : 1000 });
+  for (const [width, height] of [[1440, 1000], [1024, 900], [768, 1024], [430, 932], [390, 844], [360, 800]]) {
+    await page.setViewportSize({ width, height });
     await noOverflow(page);
     await page.screenshot({ path: `artifacts/admin-provider-detail-${width}.png`, fullPage: true });
   }
@@ -614,9 +616,13 @@ test('provider cancellation inside the provisional date window waits for admin r
   await admin.screenshot({ path: 'artifacts/cancellation-review-mobile.png', fullPage: true });
   await admin.getByLabel('Request decision').selectOption('APPROVED');
   await admin.getByRole('button', { name: 'Record review decision' }).click();
-  await expect(admin.getByText('Cancellation request approved.', { exact: true })).toBeVisible();
+  // Successful review refreshes the pending queue, unmounting the inline form
+  // before its local success message can persist. Verify durable state instead.
+  await expect(admin.getByText('No urgent cancellation requests.', { exact: true })).toBeVisible();
   await customer.reload();
   await expect(customer.getByText('Cancelled', { exact: true }).first()).toBeVisible();
+  await admin.goto('/admin/audit');
+  await expect(admin.getByText('Provider cancellation request approved', { exact: true }).first()).toBeVisible();
   await admin.close();
   await provider.close();
   await customer.close();
@@ -639,4 +645,185 @@ test('customer loyalty check-in updates once and displays nonredeemable XP', asy
   await page.setViewportSize({ width: 390, height: 844 });
   await noOverflow(page);
   await page.screenshot({ path: 'artifacts/loyalty-checkin-mobile.png', fullPage: true });
+});
+
+test('feature flags respect enabled and disabled server configuration @release-flags', async ({ page }) => {
+  const enabled = (name: string) => process.env[name] === 'true';
+  const messaging = enabled('FEATURE_BOOKING_MESSAGING');
+  const loyalty = enabled('FEATURE_LOYALTY_BETA');
+  const deposits = enabled('FEATURE_SIMULATED_DEPOSITS');
+  const cancellationPolicy = enabled('FEATURE_PROVIDER_CANCELLATION_POLICY');
+  const requestDate = cancellationPolicy ? day(1) : day(300);
+
+  await login(page, 'customer');
+  await page.goto('/profile');
+  await expect(page.locator('.experience-panel')).toHaveCount(loyalty ? 1 : 0);
+  await page.goto('/bookings/demo-accepted');
+  await expect(page.locator('.booking-messages')).toHaveCount(messaging ? 1 : 0);
+
+  const origin = 'http://127.0.0.1:3100';
+  const messageResponse = await page.request.post('/api/messages', {
+    headers: { Origin: origin },
+    data: { itemId: '00000000-0000-0000-0000-000000000000', body: 'Flag check only.' },
+  });
+  expect(messageResponse.status()).toBe(404);
+  const messageError = await messageResponse.text();
+  expect(messageError).toContain(messaging ? 'not found' : 'not enabled');
+
+  if (!deposits) {
+    const response = await page.request.post('/api/actions', {
+      headers: { Origin: origin },
+      data: { action: 'booking.deposit-prototype', data: { bookingId: 'demo-accepted', stage: 'DEPOSIT' } },
+    });
+    expect(await response.text()).toContain('prototype is disabled');
+  }
+  if (!loyalty) {
+    const response = await page.request.post('/api/actions', {
+      headers: { Origin: origin },
+      data: { action: 'loyalty.checkin', data: {} },
+    });
+    expect(await response.text()).toContain('loyalty beta is not enabled');
+  }
+
+  const customer = page;
+  await customer.goto('/services/service-1-0');
+  await customer.getByLabel('Event date', { exact: true }).fill(requestDate);
+  await customer.getByLabel('Venue / location').fill('A celebration venue, Quezon City');
+  await customer.getByRole('button', { name: 'Request your date' }).click();
+  await expect(customer).toHaveURL(/\/(?:bookings|checkout)\/[a-f0-9-]+$/);
+  const bookingId = new URL(customer.url()).pathname.split('/').at(-1)!;
+  const bookingPath = `/bookings/${bookingId}`;
+  const providerContext = await page.context().browser()!.newContext({ baseURL: 'http://127.0.0.1:3100' });
+  const provider = await providerContext.newPage();
+  await login(provider, 'provider2');
+  await provider.goto(bookingPath);
+  await provider.getByRole('button', { name: 'Accept booking request' }).click();
+  await expect(provider.getByText('All providers accepted', { exact: true })).toBeVisible();
+  await customer.reload();
+  await customer.goto(`/checkout/${bookingId}`);
+  await expect(customer.locator('.deposit-prototype')).toHaveCount(deposits ? 1 : 0);
+  const policyMessage = /provisional 48-hour cancellation review window/i;
+  if (cancellationPolicy && requestDate === day(1)) await expect(provider.getByText(policyMessage)).toBeVisible();
+  else await expect(provider.getByText(policyMessage)).toHaveCount(0);
+  await providerContext.close();
+});
+
+test('axe WCAG 2.2 AA audit across major routes and themes', async ({ browser }) => {
+  test.setTimeout(300_000);
+  const publicRoutes = [
+    '/', '/browse', '/services/service-0-0', '/providers/provider-0', '/bundles',
+    '/login', '/register', '/support',
+  ];
+  const roleRoutes: Record<string, string[]> = {
+    customer: ['/dashboard', '/bookings', '/bookings/demo-accepted', '/checkout/demo-accepted', '/profile', '/vouchers', '/notifications'],
+    provider: ['/provider', '/provider/services', '/provider/packages', '/provider/calendar', '/provider/bookings', '/provider/promotions', '/bookings/demo-request'],
+    admin: ['/admin', '/admin/users', '/admin/providers', '/admin/services', '/admin/categories', '/admin/bookings', '/admin/bundles', '/admin/vouchers', '/admin/subscriptions', '/admin/placements', '/admin/badges', '/admin/disputes', '/admin/escrow', '/admin/support', '/admin/messages', '/admin/settings', '/admin/audit'],
+  };
+  const violations: {
+    theme: string; route: string; id: string; impact: string | null; help: string;
+    nodes: { target: unknown; html: string; failureSummary: string | undefined; checks: unknown[] }[];
+  }[] = [];
+  const auditRoute = async (page: Page, route: string, theme: string) => {
+    const response = await page.goto(route);
+    expect(response?.status(), `${theme} ${route} response`).toBeLessThan(400);
+    await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
+    const result = await new AxeBuilder({ page })
+      .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'])
+      .analyze();
+    for (const item of result.violations) violations.push({
+      theme, route, id: item.id, impact: item.impact ?? null, help: item.help,
+      nodes: item.nodes.map(node => ({
+        target: node.target, html: node.html, failureSummary: node.failureSummary,
+        checks: node.any.map(check => ({ message: check.message, data: check.data })),
+      })),
+    });
+    if (theme === 'dark' && ['/', '/services/service-0-0', '/dashboard', '/provider', '/admin'].includes(route)) {
+      const name = route === '/' ? 'dark-home' : `dark-${route.slice(1).replaceAll('/', '-')}`;
+      await page.screenshot({ path: `artifacts/${name}.png`, fullPage: true });
+    }
+    for (const [width, height] of [[1440, 1000], [1024, 900], [768, 1024], [430, 932], [390, 844], [360, 800]]) {
+      await page.setViewportSize({ width, height });
+      await noOverflow(page);
+    }
+    await page.setViewportSize({ width: 1440, height: 1000 });
+  };
+
+  for (const theme of ['light', 'dark']) {
+    const publicContext = await browser.newContext({ baseURL: 'http://127.0.0.1:3100' });
+    await publicContext.addInitScript(value => localStorage.setItem('soiree-source-theme', value), theme);
+    const publicPage = await publicContext.newPage();
+    for (const route of publicRoutes) await auditRoute(publicPage, route, theme);
+    await publicContext.close();
+
+    for (const [role, routes] of Object.entries(roleRoutes)) {
+      const context = await browser.newContext({ baseURL: 'http://127.0.0.1:3100' });
+      await context.addInitScript(value => localStorage.setItem('soiree-source-theme', value), theme);
+      const page = await context.newPage();
+      await login(page, role === 'provider' ? 'provider2' : role);
+      for (const route of routes) await auditRoute(page, route, theme);
+      await context.close();
+    }
+  }
+
+  writeFileSync('artifacts/axe-wcag22aa.json', JSON.stringify({
+    completedAt: new Date().toISOString(), routeCount: publicRoutes.length + Object.values(roleRoutes).flat().length,
+    themes: ['light', 'dark'], violations,
+  }, null, 2));
+  expect(violations.length, `Found ${violations.length} axe WCAG 2.2 AA violations; see artifacts/axe-wcag22aa.json.`).toBe(0);
+});
+
+test('clean development browser records hydration and injected caret styles', async ({ browser }) => {
+  const context = await browser.newContext({ baseURL: 'http://127.0.0.1:3100' });
+  await context.addInitScript(() => {
+    const target = window as typeof window & { __caretAudit?: unknown[] };
+    target.__caretAudit = [];
+    const record = (entry: unknown) => target.__caretAudit?.push(entry);
+    const setAttribute = Element.prototype.setAttribute;
+    Element.prototype.setAttribute = function(name: string, value: string) {
+      if (name.toLowerCase() === 'style' && /caret-color/i.test(value))
+        record({ kind: 'setAttribute', value, stack: new Error().stack });
+      return setAttribute.call(this, name, value);
+    };
+    const setProperty = CSSStyleDeclaration.prototype.setProperty;
+    CSSStyleDeclaration.prototype.setProperty = function(name: string, value: string, priority?: string) {
+      if (name.toLowerCase() === 'caret-color' || /caret-color/i.test(value))
+        record({ kind: 'setProperty', name, value, stack: new Error().stack });
+      return setProperty.call(this, name, value, priority);
+    };
+    new MutationObserver(changes => {
+      for (const change of changes) {
+        const element = change.target as HTMLElement;
+        if (element instanceof HTMLInputElement && /caret-color/i.test(element.getAttribute('style') || ''))
+          record({ kind: 'mutation', value: element.getAttribute('style'), stack: new Error().stack });
+      }
+    }).observe(document, { attributes: true, subtree: true, attributeFilter: ['style'] });
+  });
+  const page = await context.newPage();
+  const errors: { route: string; type: string; message: string }[] = [];
+  let route = '';
+  page.on('console', message => {
+    if (/hydration|caret-color/i.test(message.text()))
+      errors.push({ route, type: message.type(), message: message.text().slice(0, 1400) });
+  });
+  page.on('pageerror', error => errors.push({ route, type: 'pageerror', message: error.message }));
+  const routes = [];
+  for (route of ['/', '/browse', '/login']) {
+    const response = await page.goto(route, { waitUntil: 'domcontentloaded' });
+    expect(response?.status(), route).toBeLessThan(400);
+    const html = await response!.text();
+    await page.waitForTimeout(250);
+    routes.push({
+      route,
+      serverCaretStyles: [...html.matchAll(/<input\b[^>]*style="[^"]*caret-color[^\"]*"[^>]*>/gi)].map(match => match[0]),
+      clientInputs: await page.locator('input').evaluateAll(inputs => inputs.map(input => ({
+        name: input.getAttribute('name'), style: input.getAttribute('style'), caretColor: getComputedStyle(input).caretColor,
+      }))),
+      mutations: await page.evaluate(() => (window as typeof window & { __caretAudit?: unknown[] }).__caretAudit || []),
+    });
+  }
+  writeFileSync('artifacts/rc1-development-hydration.json', JSON.stringify({
+    completedAt: new Date().toISOString(), browserVersion: await browser.version(), cleanContext: true,
+    extensionsDisabled: true, routes, errors,
+  }, null, 2));
+  await context.close();
 });

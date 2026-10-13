@@ -9,7 +9,7 @@ import { register, login, userFromToken, logout } from '@/server/auth';
 import { executeAction } from '@/server/actions';
 import { available, booking, bookingItems, bookingsFor, bookingsForProviderAdmin, bundles, services, provider } from '@/server/queries';
 import { validateVoucher, rewardReferral } from '@/server/vouchers';
-import { deliverReminders } from '@/server/reminders';
+import { deliverReminders, deliverUpcomingBookingDeadlineReminders } from '@/server/reminders';
 import { requireRole, checkTransition, rankFor, badgeEligible, DomainError, type User, } from '@/lib/domain';
 import * as b from '@/server/bookings';
 import * as m from '@/server/management';
@@ -174,6 +174,40 @@ test('visit-driven booking and featured expiry reminders are delivered only once
     assert.equal((await one<{
         n: number;
     }>('SELECT COUNT(*)::int n FROM notifications WHERE id=?', `placement-reminder-${placementId}`))!.n, 1);
+});
+test('scheduled deadline reminders are bounded, PHT-formatted, idempotent, and stop after acceptance', async () => {
+    const c = await freshCustomer();
+    const bookingId = await request(c, day(20));
+    const at = new Date();
+    await run('UPDATE bookings SET response_deadline_at=? WHERE id=?', new Date(at.getTime() + 24 * 60 * 60 * 1000).toISOString(), bookingId);
+
+    const concurrent = await Promise.all([
+        deliverUpcomingBookingDeadlineReminders(at, 100),
+        deliverUpcomingBookingDeadlineReminders(at, 100),
+    ]);
+    const customerNotice = await one<{ id: string; body: string }>(
+        'SELECT id,body FROM notifications WHERE id=?', `booking-deadline-reminder-${bookingId}-customer`,
+    );
+    const providerNotice = await one<{ id: string; body: string }>(
+        'SELECT id,body FROM notifications WHERE id=?', `booking-deadline-reminder-${bookingId}-${providerUser.id}`,
+    );
+    assert.ok(customerNotice);
+    assert.ok(providerNotice);
+    assert.match(customerNotice.body, /PHT\./);
+    assert.match(providerNotice.body, /PHT\./);
+    assert.ok(concurrent.reduce((sum, result) => sum + result.delivered, 0) >= 2);
+    assert.equal((await one<{ n: number }>(
+        `SELECT COUNT(*)::int n FROM notifications WHERE id IN (?,?)`,
+        customerNotice.id, providerNotice.id,
+    ))!.n, 2);
+
+    await b.acceptBooking(providerUser, bookingId);
+    const afterAcceptance = await deliverUpcomingBookingDeadlineReminders(at, 100);
+    assert.equal(afterAcceptance.delivered, 0);
+    assert.equal((await one<{ n: number }>(
+        `SELECT COUNT(*)::int n FROM notifications WHERE id IN (?,?)`,
+        customerNotice.id, providerNotice.id,
+    ))!.n, 2);
 });
 test('registration hashes passwords, persists sessions, welcomes customers, rejects public admin role', async () => {
     const c = (await freshCustomer());

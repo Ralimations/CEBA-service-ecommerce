@@ -4884,6 +4884,7 @@ progress::-moz-progress-bar {
 :root[data-theme='dark'] .site-footer,
 :root[data-theme='dark'] .sidebar,
 :root[data-theme='dark'] .panel,
+:root[data-theme='dark'] .voucher-card,
 :root[data-theme='dark'] .service-card,
 :root[data-theme='dark'] .provider-card,
 :root[data-theme='dark'] .bundle-card,
@@ -4931,6 +4932,8 @@ progress::-moz-progress-bar {
 :root[data-theme='dark'] .booking-messages .message-bubble:not(.mine) { background: #26372e; color: var(--ink); }
 :root[data-theme='dark'] .booking-messages .message-bubble.mine { background: #285446; color: #fff; }
 :root[data-theme='dark'] .footer-note { border-color: var(--line); }
+:root[data-theme='dark'] .chat-toggle { background: var(--primary); border-color: var(--primary); color: #fff; }
+:root[data-theme='dark'] .chat-toggle:hover { background: #145b42; }
 :root[data-theme='dark'] .bundle-section,
 :root[data-theme='dark'] .provider-banner {
   background: var(--paper);
@@ -5280,6 +5283,62 @@ input:focus, select:focus, textarea:focus {
 .referral-code { background: var(--surface-sunken); border-color: var(--border-strong); color: var(--success); }
 .site-footer { margin-top: 48px; }
 
+/* Accessibility contrast and minimum target size refinements. */
+.site-footer nav { color: var(--muted-foreground); }
+.site-footer nav a { min-height: 24px; color: var(--muted-foreground); }
+.footer-note small { color: var(--muted-foreground); }
+.badge { color: #52665c; }
+.rating { color: var(--muted-foreground); }
+.field > label,
+label[for],
+.check-label { color: var(--foreground); }
+.card-kicker > span:first-child,
+.provider-line,
+.card-bottom .price small,
+.card-bottom > span:not(.price):not(.badge) { color: var(--muted-foreground); }
+.event-facts > span,
+.simple-list,
+.onboarding-list > a { color: var(--muted-foreground); }
+.table-wrap th,
+.table-wrap td,
+.table-wrap td small { color: var(--muted-foreground); }
+.table-wrap td strong { color: var(--foreground); }
+.table-wrap td > a:not(.btn) { color: var(--success); }
+.booking-meta { color: var(--muted-foreground); }
+.booking-price svg { color: var(--muted-foreground); }
+.badge.amber { color: #65480a; }
+.badge.green { color: #245a36; }
+.badge.red { color: #8f3027; }
+.trust-note { color: #405a31; }
+.trust-note svg { color: #405a31; }
+.calendar-grid > strong { color: var(--muted-foreground); }
+.calendar-day { color: #405345; }
+.calendar-day small { color: inherit !important; }
+.calendar-day.booked { color: #2f4a24; }
+.calendar-day.blocked { color: #69491e; }
+.calendar-day.pending { color: #365666; }
+.voucher-value { color: #405b32; }
+.voucher-value strong,
+.voucher-value small { color: inherit; }
+.price small { color: var(--muted-foreground) !important; }
+.card-bottom s,
+.reset-link,
+.inclusions li { color: var(--muted-foreground) !important; }
+.support-response,
+.support-response strong,
+.support-response p,
+.faq-detail p,
+.chat-answer { color: #405345; }
+.faq-suggestions button { color: #52665c; }
+.simulation-banner,
+.simulation-banner strong,
+.simulation-banner p { color: #65480a !important; }
+.role-picker button,
+.role-picker button.selected { color: #405345; }
+.escrow-state > div > strong { color: #405b32; }
+.card-body > a { display: block; min-height: 24px; }
+.provider-line { min-height: 24px; }
+
 :root[data-theme='dark'] body {
   background-image: radial-gradient(ellipse at 8% 0%, #1a422f38, transparent 36rem);
 }
@@ -5297,6 +5356,17 @@ input:focus, select:focus, textarea:focus {
 :root[data-theme='dark'] .booking-messages .message-bubble.mine { background: #1a7353; color: #fff; }
 :root[data-theme='dark'] .form-message.success { background: #123124; color: #d9f0df; }
 :root[data-theme='dark'] .form-message.error { background: #482923; color: #ffe3dc; }
+:root[data-theme='dark'] .support-response p,
+:root[data-theme='dark'] .support-response strong { color: #405345; }
+:root[data-theme='dark'] .demo-logins { background: var(--surface-raised); color: var(--foreground); }
+:root[data-theme='dark'] .demo-logins small,
+:root[data-theme='dark'] .demo-logins .eyebrow { color: var(--foreground) !important; }
+:root[data-theme='dark'] .simulation-banner p { color: #65480a !important; }
+:root[data-theme='dark'] .calendar-day small { color: inherit !important; }
+:root[data-theme='dark'] .voucher-value small { color: #405b32 !important; }
+:root[data-theme='dark'] .chat-answer { color: #405345 !important; }
+:root[data-theme='dark'] .support-response p,
+:root[data-theme='dark'] .support-response strong { color: #405345 !important; }
 
 @media (max-width: 900px) {
   .hero.editorial-hero { grid-template-columns: 1fr 1fr; gap: 28px; padding: 34px; }

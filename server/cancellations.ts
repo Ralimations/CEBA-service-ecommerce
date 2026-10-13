@@ -15,6 +15,10 @@ export const providerCancellationReasons = {
 export type ProviderCancellationReason = keyof typeof providerCancellationReasons;
 export const otherReasonPendingCopy = 'Your provider has requested cancellation. SoiréeSource is reviewing the explanation.';
 
+export function providerCancellationPolicyEnabled() {
+  return process.env.FEATURE_PROVIDER_CANCELLATION_POLICY === 'true';
+}
+
 export function providerCancellationLockHours() {
   const configured = Number(process.env.PROVIDER_CANCELLATION_LOCK_HOURS ?? '48');
   return Number.isInteger(configured) && configured > 0 && configured <= 336 ? configured : 48;

@@ -167,15 +167,47 @@ try {
   const testCount = realPgOutput.match(/ℹ tests (\d+)/)?.[1];
   const passCount = realPgOutput.match(/ℹ pass (\d+)/)?.[1];
   const failCount = realPgOutput.match(/ℹ fail (\d+)/)?.[1];
-  if (!testCount || !passCount || failCount !== '0' || testCount !== passCount) {
-    throw new Error('PostgreSQL test output did not report a fully passing test count.');
+  const skippedCount = realPgOutput.match(/ℹ skipped (\d+)/)?.[1] ?? '0';
+  const todoCount = realPgOutput.match(/ℹ todo (\d+)/)?.[1] ?? '0';
+  if (!testCount || !passCount || failCount !== '0' || skippedCount !== '0' || todoCount !== '0' || testCount !== passCount) {
+    throw new Error(`PostgreSQL test output was incomplete (tests=${testCount ?? 'unknown'}, passed=${passCount ?? 'unknown'}, failed=${failCount ?? 'unknown'}, skipped=${skippedCount}, todo=${todoCount}).`);
   }
   await runStep('Production build', process.execPath, [npmCli, 'run', 'build'], baseEnv);
+  if (process.env.VERIFY_RELEASE === '1') {
+    await runStep(
+      'Production browser hydration and performance probes', process.execPath,
+      ['--import', 'tsx', 'tests/production-probes.ts'], baseEnv,
+    );
+  }
   const browserOutput = await runStep('Playwright browser suite', process.execPath, [npmCli, 'run', 'test:e2e'], baseEnv);
   const browserPass = browserOutput.match(/(\d+) passed/)?.[1];
   const browserFail = browserOutput.match(/(\d+) failed/)?.[1] ?? '0';
-  if (!browserPass || browserFail !== '0') throw new Error('Playwright did not report a fully passing browser suite.');
+  const browserSkipped = browserOutput.match(/(\d+) skipped/)?.[1] ?? '0';
+  const browserInterrupted = browserOutput.match(/(\d+) interrupted/)?.[1] ?? '0';
+  const browserFlaky = browserOutput.match(/(\d+) flaky/)?.[1] ?? '0';
+  if (!browserPass || browserFail !== '0' || browserSkipped !== '0' || browserInterrupted !== '0' || browserFlaky !== '0')
+    throw new Error(`Playwright output was incomplete (passed=${browserPass ?? 'unknown'}, failed=${browserFail}, skipped=${browserSkipped}, interrupted=${browserInterrupted}, flaky=${browserFlaky}).`);
   steps.push({ command: `Playwright cases: ${browserPass} passed, ${browserFail} failed`, code: 0, durationMs: 0 });
+
+  if (process.env.VERIFY_RELEASE === '1') {
+    const disabledEnv = {
+      ...baseEnv,
+      FEATURE_BOOKING_MESSAGING: 'false',
+      FEATURE_PROVIDER_CANCELLATION_POLICY: 'false',
+      FEATURE_LOYALTY_BETA: 'false',
+      FEATURE_SIMULATED_DEPOSITS: 'false',
+      FEATURE_LOYALTY_MONETARY_REWARDS: 'false',
+    };
+    const flagsOutput = await runStep(
+      'Playwright feature-disabled browser/API checks', process.execPath,
+      [npmCli, 'run', 'test:e2e', '--', '--grep', '@release-flags'], disabledEnv,
+    );
+    const flagsPassed = flagsOutput.match(/(\d+) passed/)?.[1];
+    if (flagsPassed !== '1' || /\d+ (?:failed|skipped|interrupted|flaky)/.test(flagsOutput)) {
+      throw new Error('Feature-disabled Playwright check did not report exactly one passing, non-skipped case.');
+    }
+    steps.push({ command: `Feature-disabled Playwright cases: ${flagsPassed} passed`, code: 0, durationMs: 0 });
+  }
 } catch (error) {
   failure = error;
 } finally {

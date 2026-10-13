@@ -7,6 +7,7 @@ import { Badge, Empty, Field, Heading, Panel, Status, Inclusions, DataTable, Tru
 import { ActionForm, ActionButton } from '@/components/action-form';
 import { BookingCard } from '@/components/cards';
 import { money, dateLabel, human, today } from '@/lib/format';
+import { providerCancellationPolicyEnabled } from '@/server/cancellations';
 import { Handshake } from './handshake';
 import { expireDueBookingsFor, expirePendingBooking } from '@/server/bookings';
 import { cancellationReasonForBooking, providerCancellationReasons, otherReasonPendingCopy, providerCancellationWindowActive, providerCancellationLockHours } from '@/server/cancellations';
@@ -64,7 +65,7 @@ export async function BookingDetail({ user, bookingId }: {
     const admin = user.role === 'ADMIN';
     const mine = b.items.find((i) => i.provider_user_id === user.id);
     const providerCancellationRestricted = user.role === 'PROVIDER' &&
-      process.env.FEATURE_PROVIDER_CANCELLATION_POLICY === 'true' && providerCancellationWindowActive(b.event_date);
+      providerCancellationPolicyEnabled() && providerCancellationWindowActive(b.event_date);
     const cancellationReason = await cancellationReasonForBooking(b.id, user);
     const events = (await all<{
         id: string;

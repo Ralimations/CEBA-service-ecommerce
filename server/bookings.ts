@@ -8,7 +8,7 @@ import { assert, requireRole, checkTransition, type User, type BookingStatus } f
 import { today } from '@/lib/format';
 import { hashToken } from './security';
 import type { Booking } from '@/types/models';
-import { otherReasonPendingCopy, providerCancellationReasons, providerCancellationWindowActive } from './cancellations';
+import { otherReasonPendingCopy, providerCancellationReasons, providerCancellationPolicyEnabled, providerCancellationWindowActive } from './cancellations';
 import { awardCompletedBookingExperience } from './loyalty';
 export const eventDate = z
     .string()
@@ -288,7 +288,7 @@ export async function cancelBooking(user: User, bookingId: string, input: unknow
             assert(data.reasonCode !== 'OTHER' || data.otherReasonText.length >= 10, 'Other reasons require a short explanation (10–500 characters).');
             const provider = b.items.find((item) => item.provider_user_id === user.id);
             assert(provider, 'Booking not found.', 404);
-            if (process.env.FEATURE_PROVIDER_CANCELLATION_POLICY === 'true' && providerCancellationWindowActive(b.event_date, policyAt)) {
+            if (providerCancellationPolicyEnabled() && providerCancellationWindowActive(b.event_date, policyAt)) {
                 assert(!['CANCELLED', 'COMPLETED', 'DISPUTED'].includes(b.status), 'This booking is no longer eligible for a cancellation request.');
                 const requestId = id();
                 await insert('provider_cancellation_requests', {

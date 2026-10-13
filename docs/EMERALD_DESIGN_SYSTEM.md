@@ -62,5 +62,5 @@ Existing reusable `Header`, `Sidebar`, `ServiceCard`, `BundleCard`, `BookingCard
 - Status meaning remains textual; role and event actions are not represented by color alone.
 - System preference and manual theme selection are keyboard-accessible through the existing button.
 - Reduced-motion rules remain active; the new surfaces use no animated gradients.
-- Light and dark semantic text values are selected for strong contrast. Existing browser tests sample page/card contrast, but this is not a complete WCAG 2.2 AA audit. Axe-core is not installed, and route-wide keyboard/dialog/contrast audits remain a stakeholder-review task.
+- Light and dark semantic text values are selected for strong contrast. RC1's axe-core WCAG 2.2 AA scan found zero violations across 39 public, customer, provider, and admin routes in both themes. Manual keyboard, dialog, and assistive-technology review remains.
 - The test browser is now launched with extensions disabled to investigate the historical `caret-color: transparent` hydration mismatch. The post-change result is recorded in the completion report.

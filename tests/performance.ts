@@ -41,7 +41,7 @@ const paths: [string, string, boolean][] = [
   ['/provider', 'provider', false],
   ['/admin', 'admin', false],
   ['/bookings', 'customer', false],
-  ['/bookings/demo-confirmed', 'customer', false],
+  ['/bookings/demo-accepted', 'customer', false],
 ];
 try {
   for (const [path, role, repeat] of paths) {

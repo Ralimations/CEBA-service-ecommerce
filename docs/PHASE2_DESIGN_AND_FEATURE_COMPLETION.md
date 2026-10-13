@@ -80,3 +80,7 @@ The browser log continues to show a hydration mismatch involving injected `caret
 ## Release posture
 
 This is for local stakeholder review. Existing provisional booking/cancellation, loyalty, installment and theme policies still need stakeholder decisions. Do not merge or deploy until the release checklist is completed and Preview/CI database isolation is verified.
+
+## RC1 follow-up (2026-10-14)
+
+`npm run verify:release` passed locally with disposable PostgreSQL 17.11, migrations 002–008, 35/35 business tests, production build, 13/13 Playwright tests, and 1/1 separate feature-disabled browser/API test. The axe WCAG 2.2 AA scan found zero violations across 39 routes in both themes. Production-mode route samples captured 26–95 ms total response times and 0–13 SQL queries over 19 samples; they are synthetic local measurements, not a before/after or production-capacity benchmark. The production hydration probe found no errors or caret-style mutations on `/`, `/browse`, and `/login`; the development-only caret-style mismatch remains unexplained. Manual accessibility review and staging/CI gates remain. See `PHASE2_RC1_IMPLEMENTATION_REPORT.md` and `artifacts/EMERALD_VISUAL_INDEX.md`.

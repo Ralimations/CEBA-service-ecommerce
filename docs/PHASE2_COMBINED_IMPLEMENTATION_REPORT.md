@@ -135,3 +135,7 @@ The branch has local PostgreSQL, build, business, and browser evidence. It is **
 | Private dispute evidence storage | Not implemented |
 | Automated GitHub workflow | Prepared; remote Actions run not verified |
 | Performance regression benchmark | Not run |
+
+## RC1 follow-up (2026-10-14)
+
+The release-candidate pass supersedes the earlier pending accessibility/performance notes above: `npm run verify:release` passed using disposable PostgreSQL 17.11, migrations 002–008, 35/35 business tests, production build, 13/13 Playwright cases, and a separate 1/1 feature-disabled browser/API case. Axe WCAG 2.2 AA reported zero violations across 39 routes in light and dark. Local production probes captured 19 synthetic route samples (26–95 ms and 0–13 SQL queries); these are not production-capacity or before/after evidence. The production probe found no caret-style mutations or hydration client errors on `/`, `/browse`, and `/login`; a development-only `caret-color: transparent` hydration warning remains unexplained. Manual accessibility review, remote CI, preview isolation, and stakeholder policy decisions remain release gates. See `PHASE2_RC1_IMPLEMENTATION_REPORT.md` and `artifacts/EMERALD_VISUAL_INDEX.md`.

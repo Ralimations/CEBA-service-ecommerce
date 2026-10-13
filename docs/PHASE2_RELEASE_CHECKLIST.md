@@ -35,7 +35,7 @@ This checklist is for a future reviewed rollout. The migrations below are prepar
 
 ## Regression and acceptance checks
 
-- [x] Run `npm run verify:phase2` (disposable PostgreSQL 17.11, migrations 002–008, 34/34 business tests, production build, 10/10 Playwright). PGlite is not the canonical compatibility result.
+- [x] Run `npm run verify:phase2` (disposable PostgreSQL 17.11, migrations 002–008, 35/35 business tests, production build, 13/13 Playwright); `npm run verify:release` also passed with the production probes and 1/1 feature-disabled test. PGlite is not the canonical compatibility result.
 - [ ] Run migrations 002–007 against a fresh isolated PostgreSQL schema and an existing-data copy.
 - [ ] Test appeal validation, generic confirmation, per-email rate limit, honeypot, admin-only reading, status/notes, and no account reinstatement.
 - [ ] Test provider acceptance before/after deadline, old pending row behavior, partial bundle expiry, concurrent accept/expire/cancel, reservation release, voucher reuse, idempotency, and notifications.
@@ -44,7 +44,8 @@ This checklist is for a future reviewed rollout. The migrations below are prepar
 - [x] Verify two-hour deadline reminders are unique, scoped to the customer and participating providers, and described as visit-driven rather than exact-time delivery.
 - [x] Verify admin provider detail for suspended providers at 1440, 768, and 390 pixels; verify customer, ordinary provider, and anonymous access denial; verify public marketplace exclusion.
 - [x] Capture and review baseline and post-redesign screenshots across desktop, tablet, and mobile; see `artifacts/EMERALD_VISUAL_INDEX.md`.
-- [ ] Review the baseline/post-redesign visual index; complete route-specific dark-mode review and an axe/WCAG 2.2 AA audit before claiming full visual/accessibility completion.
+- [x] Capture selected dark-mode route screenshots and run axe/WCAG 2.2 AA across 39 routes in both themes (zero findings); see `artifacts/EMERALD_VISUAL_INDEX.md` and `artifacts/axe-wcag22aa.json`.
+- [ ] Complete manual keyboard, dialog, and assistive-technology review before claiming full accessibility completion.
 - [ ] Verify existing payment simulation, dual QR handshake, service-fee calculations, cache behavior, and public browsing.
 
 ## Feature flags, monitoring, and cache
