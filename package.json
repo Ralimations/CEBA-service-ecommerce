@@ -13,6 +13,7 @@
     "typecheck": "next typegen && tsc --noEmit",
     "lint": "eslint .",
     "test": "tsx tests/isolated.ts",
+    "verify:phase2": "tsx tests/verify-phase2.ts",
     "db:migrate": "tsx database/manage.ts migrate",
     "db:seed": "tsx database/manage.ts seed",
     "test:smoke": "tsx tests/smoke.ts",
