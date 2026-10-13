@@ -8,6 +8,8 @@ Audit and implementation date: 2026-10-14. RC2 work is local-only until the host
 - The untracked Emerald design reference pack and ZIP were preserved.
 - RC1's recorded baseline was 35 business tests, 13 Playwright tests, one feature-disabled browser check, migrations 002–008, axe across 39 routes in light/dark modes, production build/probes, and synthetic performance samples. Those remain RC1 evidence, not RC2 results.
 
+RC2 local commits: `a999196` (database target safeguards and isolated CI workflow) and `615bd46` (staging audit, runbook, acceptance, and demo documents). Ending branch remains `phase2a/meeting-two-feedback`; the local tracker says ahead four of `origin/phase2a/meeting-two-feedback`, but that remote-tracking ref could not be refreshed. Only the untracked Emerald pack and ZIP remain in the working tree. Nothing was pushed.
+
 ## Hosting and database audit
 
 See [the infrastructure audit](RC2_INFRASTRUCTURE_AUDIT.md). A local Vercel repo link exists, but remote settings could not be inspected. `.env.local` exposes only a Supabase pooler endpoint identity (region, port, database path), not a project reference. Because staging and production identity cannot be compared, the endpoint is considered unsafe for writes and Preview use. No hosted database operation was attempted.
@@ -48,7 +50,7 @@ The workflow grants `contents: read`, has no cloud secrets, and runs the test ha
 - The repository declares a daily cron at `0 0 * * *`; deployment status and `CRON_SECRET` are unknown. It was not activated or changed.
 - The five flags in `.env.example` are server-side. The shipped defaults remain off; monetary loyalty stays off. Preview and Production values were not visible. See the demo decision sheet for a safe staging configuration proposal.
 - No real payments, payouts, SMS/email delivery, or external notifications were triggered. Production data/configuration was not read through the database and was not changed.
-- Dependency audit could not be refreshed from the npm registry in the RC1 run; RC2 dependency state remains unverified.
+- `npm audit --package-lock-only` was attempted for RC2 but the npm registry audit endpoint failed in this restricted-network environment. No dependency changes were made; the advisory audit remains unverified.
 
 ## Performance and visual checks
 
