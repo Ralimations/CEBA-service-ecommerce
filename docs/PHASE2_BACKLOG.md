@@ -115,6 +115,19 @@ Complexity uses S/M/L/XL as a relative engineering estimate. All testing that mu
 
 The full PGlite business suite passed once after the continuation tests were added. The pre-existing append-only assertion has also failed intermittently in both baseline and feature runs; a real isolated PostgreSQL run remains a release gate. The Playwright failures are recorded in `PHASE2_IMPLEMENTATION_REPORT.md`.
 
+## RC2 release engineering — 2026-10-14
+
+| Work item | Status | Evidence / remaining work |
+|---|---|---|
+| Fail-closed local/staging DB target | Implemented and verified locally | `database/target-guard.ts` requires loopback for local, direct host/ref match plus distinct production ref for staging, and blocks production mutations. Four target-guard checks passed in `npm run verify:release`. |
+| Disposable-PostgreSQL CI workflow | Updated locally | Read-only permissions, no cloud secrets, concurrency cancellation, manual trigger and artifacts. Remote branch copy is older; push is blocked until Preview effects are audited. |
+| Cloud infrastructure audit | Partial | Local Vercel project link and GitHub repo metadata checked; remote Vercel/Supabase settings, plans, secret scopes and protection unavailable. See `RC2_INFRASTRUCTURE_AUDIT.md`. |
+| Isolated cloud staging and Preview | Blocked | No distinct staging project identity, pricing/quota, Preview variable scope, protection, or deployment evidence. |
+| Hosted journeys, accessibility, runtime health | Pending | Requires protected Preview, synthetic accounts and deployed SHA. |
+| Operational/demo package | Prepared | RC2 report, runbook, acceptance matrix, stakeholder walkthrough and decision sheet created. |
+
+Keep the Emerald reference pack untracked/preserved. Do not push the branch until automatic Preview effects and database separation are proven.
+
 ### P2.2 Cancellation policy and dispute model
 
 - **Description:** Specify cancellation transitions, near-event constraints, admin review, compensation, and audit trail before implementation.

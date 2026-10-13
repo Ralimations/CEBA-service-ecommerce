@@ -1,5 +1,17 @@
 # Phase 2 release checklist
 
+## RC2 cloud staging gate
+
+- [ ] Verify Vercel project, production branch, Preview scopes, deployment protection, domains, build hooks and automatic deployment effects.
+- [ ] Verify Supabase production and dedicated staging project refs, plan/quota/cost, migration history, backup and restore access. Confirm refs differ; never use the unidentified local pooler endpoint.
+- [ ] Configure only Preview-scoped staging credentials and an access gate. Keep CI free of cloud credentials.
+- [ ] Run `npm run verify:release` locally; observe an actual GitHub Actions run after the push gate passes.
+- [ ] Apply reviewed migrations/fixtures only to empty isolated staging and retain redacted identity evidence.
+- [ ] Run deployed role, authorization, accessibility, runtime, feature-flag and cron-handler checks using synthetic data.
+- [ ] Record deployed SHA, Preview URL, logs, test matrix and rollback owner. Do not promote or merge under this checklist alone.
+
+Current RC2 status: local release verification **passes**; cloud staging remains **blocked at isolation proof**. See `PHASE2_RC2_CLOUD_STAGING_REPORT.md`; no Preview, remote CI result, migration, or Production change is claimed.
+
 This checklist is for a future reviewed rollout. The migrations below are prepared files, not applied production changes.
 
 ## Before merge

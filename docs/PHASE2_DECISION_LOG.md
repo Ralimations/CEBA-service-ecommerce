@@ -1,5 +1,13 @@
 # Phase 2 decision log
 
+## RC2 release engineering decisions (2026-10-14)
+
+- Database mutation commands require an explicit local or staging target. Local means loopback only. Staging means a direct Supabase host matching the staging project ref and a separately verified, distinct production ref. Production runtime may connect in Vercel Production; migration and seed commands reject Production. This is an engineering safety rule, not a product-policy decision.
+- No staging database was selected or provisioned because project identity, free quota/cost, and account settings could not be verified. The generic Supabase pooler endpoint in ignored local configuration is not sufficient proof of project identity.
+- The development-branch Actions workflow remains isolated and secretless. RC2 workflow improvements stay local until an automatic Vercel Preview is proven isolated from production.
+- No production flag, domain, branch mapping, cron, migration, deployment, or data was changed. Existing production settings were not readable in the available tools.
+- Product-policy decisions for cancellation, message retention, monetary rewards, and simulated payment remain open; this sprint does not approve them.
+
 No item below is approved policy unless explicitly marked approved. Recommendations are engineering proposals for stakeholder review.
 
 | Decision ID | Question | PDF page | Why it matters | Possible options | Recommendation | Approval status | Implementation dependency |
