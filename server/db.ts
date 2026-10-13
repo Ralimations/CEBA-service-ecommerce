@@ -6,6 +6,7 @@ import { randomUUID } from 'node:crypto';
 import { defaults } from '@/config/platform';
 import type { Settings } from '@/lib/domain';
 import { measureQuery } from './performance';
+import { assertSafeDatabaseTarget } from '@/database/target-guard';
 
 export type Row = Record<string, string | number | boolean | null>;
 
@@ -37,14 +38,16 @@ export function db(): DatabaseClient {
   }
 
   if (!connection) {
+    const url = databaseUrl();
+    assertSafeDatabaseTarget('runtime', url);
     const poolSize = Number(process.env.POSTGRES_POOL_MAX || 5);
     if (!Number.isInteger(poolSize) || poolSize < 1 || poolSize > 10)
       throw new Error('POSTGRES_POOL_MAX must be an integer between 1 and 10.');
-    connection = postgres(databaseUrl(), {
+    connection = postgres(url, {
       prepare: false,
       // Supabase's supplied certificate chain needs its project CA for full
       // verification. Require encryption; local test PostgreSQL may omit TLS.
-      ssl: new URL(databaseUrl()).hostname.endsWith('.supabase.com') ? 'require' : undefined,
+      ssl: /\.supabase\.(?:com|co)$/.test(new URL(url).hostname) ? 'require' : undefined,
 
       // Small shared pool: Fluid Compute can serve concurrent requests in one instance.
       max: poolSize,

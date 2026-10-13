@@ -6,7 +6,7 @@ A local event services marketplace for customers, providers, and administrators.
 
 ## Phase
 
-**Phase 1 Functional MVP.** This is a working application with Supabase PostgreSQL persistence, server-side authorization, and tested workflows. Payment, subscription, promotion, refund, and earnings amounts are simulations. No real money is collected or transferred.
+**Phase 2 RC2 local candidate.** The application includes the Phase 2 booking, messaging, moderation, loyalty, and Emerald UI work. Payment, subscription, promotion, refund, and earnings amounts remain simulations. No real money is collected or transferred. Cloud staging and remote CI are not yet verified; see the [RC2 cloud report](docs/PHASE2_RC2_CLOUD_STAGING_REPORT.md).
 
 See [PHASE1_STATUS.md](PHASE1_STATUS.md) for the feature-by-feature status and assumptions, and [CHANGELOG_PHASE1.md](CHANGELOG_PHASE1.md) for major changes.
 
@@ -14,11 +14,12 @@ Phase 2 implementation is in the review branch `phase2a/meeting-two-feedback`; p
 
 ## Installation
 
-Requirements: **Node.js 24 or newer** and npm. A Supabase project and server-only PostgreSQL connection string are required. Run commands from the project directory.
+Requirements: **Node.js 24 or newer** and npm. The application needs a server-only PostgreSQL connection. Run commands from the project directory.
 
 ```powershell
 npm ci
 Copy-Item .env.example .env
+# Configure POSTGRES_URL and DATABASE_TARGET before database commands.
 npm run db:migrate
 npm run db:seed
 npm run dev
@@ -55,7 +56,9 @@ Application identity, locale, default policy values, and recommendation weights 
 
 ## Database
 
-Supabase PostgreSQL is accessed through Postgres.js with a small typed, parameterized repository layer instead of an ORM. The app uses `POSTGRES_URL`, which should be a Supabase pooler connection string for Vercel. Foreign keys, status constraints, unique reservations, write transactions, and an append-only financial/event audit trail protect the core workflow.
+PostgreSQL is accessed through Postgres.js with a small typed, parameterized repository layer instead of an ORM. The app uses server-only `POSTGRES_URL`; Vercel's production runtime can use the configured Supabase pooler. Foreign keys, status constraints, unique reservations, write transactions, and an append-only financial/event audit trail protect the core workflow.
+
+Database mutations fail closed unless the target is explicit. For local development, point `POSTGRES_URL` at a loopback PostgreSQL database and set `DATABASE_TARGET=local`. For a verified staging Supabase project, use its direct `db.<project-ref>.supabase.co` host and set `DATABASE_TARGET=staging`, `STAGING_SUPABASE_PROJECT_REF`, and the distinct verified `PRODUCTION_SUPABASE_PROJECT_REF`. Generic pooler hosts cannot prove project identity and are refused by migration/seed commands. Never point local development, CI, or Preview at production.
 
 `database/schema.postgres.sql` contains the initial idempotent migration and schema version marker. `database/seed.ts` creates relative-date demo scenarios, including 10 provider businesses, 20 services, 60 packages, reviews, two bundles, vouchers, and bookings in different lifecycle states. Seed data is fictional. Seeding skips databases that already contain users; it does not merge fixtures into existing data.
 
@@ -72,7 +75,7 @@ Money is stored in integer centavos. Booking items snapshot package details, sup
 
 ### Reset and seed
 
-There is intentionally no production reset command. Run migrations and seed only against an explicitly selected development database; seeding skips databases that already contain users.
+There is intentionally no production reset command. Run migrations and seed only against an explicitly selected local or staging database; production is rejected by migration/seed commands. Seeding skips databases that already contain users.
 
 ```powershell
 npm run db:migrate
@@ -86,7 +89,7 @@ npm run db:migrate
 npm run db:seed
 ```
 
-Backups, point-in-time recovery, and database monitoring are managed in the Supabase project. The migration and seed commands are intentionally idempotent; there is no production reset command.
+Backups, point-in-time recovery, and database monitoring are managed in the Supabase project. The migration and seed commands are intentionally idempotent; there is no production reset command. Review the [RC2 runbook](docs/PHASE2_RC2_DEPLOYMENT_RUNBOOK.md) before using a hosted staging database.
 
 ## Demo accounts
 
@@ -188,6 +191,7 @@ npm run lint
 npm run format:check
 npm test
 npm run build
+npm run verify:release
 ```
 
 With the application running on port 3000:

@@ -2,8 +2,13 @@ name: Phase 2 isolated verification
 
 on:
   pull_request:
+  workflow_dispatch:
   push:
     branches: [phase2a/meeting-two-feedback]
+
+concurrency:
+  group: phase2-verification-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -40,5 +45,8 @@ jobs:
         if: always()
         with:
           name: phase2-release-verification
-          path: artifacts/
+          path: |
+            artifacts/
+            test-results/
+            playwright-report/
           if-no-files-found: warn
