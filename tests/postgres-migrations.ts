@@ -49,18 +49,21 @@ try {
   const migration005 = await readFile(resolve('database/migrations/005_provider_cancellation_window.sql'), 'utf8');
   const migration006 = await readFile(resolve('database/migrations/006_loyalty_experience.sql'), 'utf8');
   const migration007 = await readFile(resolve('database/migrations/007_simulated_deposit_prototype.sql'), 'utf8');
+  const migration008 = await readFile(resolve('database/migrations/008_booking_message_reports.sql'), 'utf8');
   await reserved.unsafe(migration002);
   await reserved.unsafe(migration003);
   await reserved.unsafe(migration004);
   await reserved.unsafe(migration005);
   await reserved.unsafe(migration006);
   await reserved.unsafe(migration007);
+  await reserved.unsafe(migration008);
   await reserved.unsafe(migration002);
   await reserved.unsafe(migration003);
   await reserved.unsafe(migration004);
   await reserved.unsafe(migration005);
   await reserved.unsafe(migration006);
   await reserved.unsafe(migration007);
+  await reserved.unsafe(migration008);
 
   const rows = await reserved.unsafe(`SELECT id,status,response_deadline_at FROM bookings WHERE id='old-pending'`);
   assert.deepEqual({ ...rows[0] }, { id: 'old-pending', status: 'PENDING', response_deadline_at: null });
@@ -70,13 +73,14 @@ try {
     [schema],
   );
   assert.equal(actorNullable[0]?.is_nullable, 'YES');
-  assert.equal((await reserved.unsafe(`SELECT version FROM schema_migrations WHERE version BETWEEN 2 AND 7 ORDER BY version`)).length, 6);
+  assert.equal((await reserved.unsafe(`SELECT version FROM schema_migrations WHERE version BETWEEN 2 AND 8 ORDER BY version`)).length, 7);
+  assert.equal((await reserved.unsafe(`SELECT 1 FROM information_schema.tables WHERE table_schema=$1 AND table_name='booking_message_reports'`, [schema])).length, 1);
   const supportExists = await reserved.unsafe(
     `SELECT 1 FROM information_schema.tables WHERE table_schema=$1 AND table_name='public_account_support'`,
     [schema],
   );
   assert.equal(supportExists.length, 1);
-  console.log('PostgreSQL migrations 002–007 passed twice in a disposable schema; historical rows and null deadlines were preserved.');
+  console.log('PostgreSQL migrations 002–008 passed twice in a disposable schema; historical rows, null deadlines, and private message reports were preserved.');
 } finally {
   reserved?.release();
   await sql.unsafe(`DROP SCHEMA IF EXISTS "${schema}" CASCADE`);

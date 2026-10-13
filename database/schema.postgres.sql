@@ -155,6 +155,20 @@ CREATE INDEX IF NOT EXISTS public_account_support_queue ON public_account_suppor
 CREATE INDEX IF NOT EXISTS public_account_support_email ON public_account_support(email_hash,created_at DESC);
 CREATE INDEX IF NOT EXISTS booking_messages_thread ON booking_messages(booking_item_id,created_at,id);
 CREATE INDEX IF NOT EXISTS booking_messages_unread ON booking_messages(recipient_id,booking_item_id,read_at) WHERE read_at IS NULL;
+CREATE TABLE IF NOT EXISTS booking_message_reports (
+  id TEXT PRIMARY KEY,
+  message_id TEXT NOT NULL REFERENCES booking_messages(id),
+  reporter_id TEXT NOT NULL REFERENCES users(id),
+  category TEXT NOT NULL CHECK(category IN ('HARASSMENT','SPAM','SAFETY','OTHER')),
+  details TEXT NOT NULL DEFAULT '' CHECK(char_length(details)<=1000),
+  status TEXT NOT NULL DEFAULT 'OPEN' CHECK(status IN ('OPEN','REVIEWED','RESOLVED')),
+  internal_note TEXT NOT NULL DEFAULT '' CHECK(char_length(internal_note)<=2000),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  reviewed_by TEXT REFERENCES users(id),
+  reviewed_at TIMESTAMPTZ,
+  UNIQUE(message_id,reporter_id)
+);
+CREATE INDEX IF NOT EXISTS booking_message_reports_queue ON booking_message_reports(status,created_at);
 CREATE INDEX IF NOT EXISTS experience_ledger_user_history ON experience_ledger(user_id,created_at DESC);
 CREATE INDEX IF NOT EXISTS service_category ON services(category_id,status);
 CREATE OR REPLACE FUNCTION soiree_append_only() RETURNS trigger LANGUAGE plpgsql AS $$
@@ -227,3 +241,19 @@ CREATE TABLE IF NOT EXISTS simulated_deposit_entries (
 );
 CREATE INDEX IF NOT EXISTS simulated_deposit_booking ON simulated_deposit_entries(booking_id,stage);
 INSERT INTO schema_migrations(version) VALUES(7) ON CONFLICT(version) DO NOTHING;
+-- Migration 008: participant-submitted reports refer to one message only.
+CREATE TABLE IF NOT EXISTS booking_message_reports (
+  id TEXT PRIMARY KEY,
+  message_id TEXT NOT NULL REFERENCES booking_messages(id),
+  reporter_id TEXT NOT NULL REFERENCES users(id),
+  category TEXT NOT NULL CHECK(category IN ('HARASSMENT','SPAM','SAFETY','OTHER')),
+  details TEXT NOT NULL DEFAULT '' CHECK(char_length(details)<=1000),
+  status TEXT NOT NULL DEFAULT 'OPEN' CHECK(status IN ('OPEN','REVIEWED','RESOLVED')),
+  internal_note TEXT NOT NULL DEFAULT '' CHECK(char_length(internal_note)<=2000),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  reviewed_by TEXT REFERENCES users(id),
+  reviewed_at TIMESTAMPTZ,
+  UNIQUE(message_id,reporter_id)
+);
+CREATE INDEX IF NOT EXISTS booking_message_reports_queue ON booking_message_reports(status,created_at);
+INSERT INTO schema_migrations(version) VALUES(8) ON CONFLICT(version) DO NOTHING;

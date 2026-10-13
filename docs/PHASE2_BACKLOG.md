@@ -4,6 +4,8 @@
 
 The earlier planning entries below describe the state when drafted. The current branch now implements: 24-hour booking expiry and a prepared protected daily cron; configurable 48-hour provider cancellation review; persisted item-scoped booking messaging; light/dark/system theming; nonredeemable loyalty experience points; and a separate simulated installment ledger. Validation is summarized in `docs/PHASE2_COMBINED_IMPLEMENTATION_REPORT.md`. These business values remain provisional. No production migration or deployment has occurred.
 
+**Emerald continuation update — 2026-10-13:** the UI now uses the Emerald Editorial Luxury system documented in `docs/EMERALD_DESIGN_SYSTEM.md`. Bundle-scoped message browser coverage, participant reporting/admin review, and visit-driven two-hour booking-deadline reminders are implemented on this branch. Migration 008 adds report metadata. Final automated evidence and known gaps are tracked in `docs/PHASE2_DESIGN_AND_FEATURE_COMPLETION.md`.
+
 Complexity uses S/M/L/XL as a relative engineering estimate. All testing that mutates records must use the disposable PGlite harness or another verified isolated database.
 
 ## P0 — Blocking/security
@@ -84,12 +86,24 @@ Complexity uses S/M/L/XL as a relative engineering estimate. All testing that mu
 
 ## Continuation status (2026-10-13)
 
+## Emerald redesign and feature follow-up (2026-10-13)
+
+| Work item | Status | Evidence / remaining work |
+|---|---|---|
+| Emerald Editorial Luxury visual system | **Implemented for core public, customer, provider, and admin surfaces** | Responsive token and component refinement plus homepage redesign. Route-specific dark screenshots and visual-diff automation remain incomplete. |
+| Bundle messaging browser coverage | **Implemented in E2E** | Two booking-item conversations, customer/provider exchange, unrelated provider/customer denial, mobile screenshot, long input rejection and script-like text escaping are exercised. |
+| Message reporting | **Implemented provisionally** | Migration 008, participant-only reports, one report per sender/message, focused admin queue and audited review. Retention and moderation policy remain open. |
+| Pre-deadline reminders | **Implemented, visit-driven** | Stable-ID reminders appear within a two-hour deadline window when a participant visits. No exact-time scheduler guarantee; cron remains inactive. |
+| Birthday/rank monetary benefits | **Deferred** | Feature flag remains off. Business values, birthday data handling, stacking, caps and abuse prevention are not approved. |
+| WCAG 2.2 AA audit | **Partial** | Basic automated contrast sampling and semantics/focus review; no axe-core/full route audit. |
+| Performance regression measurements | **Not run** | No before/after query-count or latency claim for this design pass. |
+
 | Work item | Status | Evidence / remaining work |
 |---|---|---|
 | P0.1 stale-session security regression | **Completed** | Isolated business suite verifies invalidated customer/provider sessions and denied action dispatch. |
 | P0.2 deployed pilot incident review | **Blocked on operational access** | No pilot environment was queried. Obtain the incident build, logs, and authorized read-only verification separately. |
 | P1.1 Service Fee wording | **Completed** | Presentation-only change; provider allocation and internal fee names are unchanged. |
-| P1.2 suspended provider admin record | **Implemented, awaiting browser verification** | Role- and provider-scoped code exists. Isolated PGlite browser requests reset; verify all roles and viewports with real local PostgreSQL. |
+| P1.2 suspended provider admin record | **Implemented and verified locally** | Role/provider access, customer/provider/anonymous denial, public marketplace exclusion, and 1440/768/390 layouts passed the real-PostgreSQL Playwright suite. No shared or production database was queried. |
 | P1.3 public account support | **Implemented, awaiting stakeholder acceptance** | Generic public intake, rate-limit/honeypot, admin-only queue and internal notes. No email delivery, no auto-reinstatement; stronger spam controls and operating owner remain open. |
 | P1.4 provider cancellation reason moderation | **Implemented provisionally, awaiting stakeholder acceptance** | One primary code; Other text private pending append-only admin decision. Near-event restrictions remain off. |
 | P2.1 response deadline and expiry | **Implemented provisionally, real PostgreSQL validation pending** | New rows get 24 hours; old pending rows remain deadline-null; due bundles expire atomically on relevant access/action. No scheduled reconciler. |

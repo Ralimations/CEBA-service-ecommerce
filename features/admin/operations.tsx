@@ -11,6 +11,7 @@ import { ActionForm, ActionButton } from '@/components/action-form';
 import { money, dateLabel, today, human } from '@/lib/format';
 import { publicAppealsForAdmin } from '@/server/public-support';
 import { pendingEmergencyCancellationRequests, pendingProviderCancellationReasons, providerCancellationReasons } from '@/server/cancellations';
+import { bookingMessageReports } from '@/server/messages';
 export async function AdminVouchers() {
     const list = (await all<Voucher>('SELECT * FROM vouchers ORDER BY id DESC'));
     return (<>
@@ -441,5 +442,28 @@ export async function AdminSupport({ user }: { user: User }) {
           </ActionForm>
         </Panel>))}
       {!list.length && <Empty title="All caught up.">No support tickets yet.</Empty>}
+    </>);
+}
+
+export async function AdminMessageReports({ user }: { user: User }) {
+    const reports = await bookingMessageReports(user);
+    return (<>
+      <Heading eyebrow="TRUST & SAFETY" title="Message reports" description="Review only the reported message and its booking context. Full conversation histories are not shown here."/>
+      {reports.map((report) => <Panel key={report.id}>
+        <div className="row between">
+          <div><h2>{human(report.category)} report</h2><small>Reported by {report.reporter_name} · sent by {report.sender_name} · {dateLabel(report.created_at)}</small></div>
+          <Status value={report.status}/>
+        </div>
+        <blockquote className="reported-message">{report.message_body}</blockquote>
+        {report.details && <p className="pre-line"><strong>Report details:</strong> {report.details}</p>}
+        <p><strong>Provider:</strong> {report.provider_name} · <strong>Booking:</strong> {report.booking_title}</p>
+        <Link href={`/bookings/${report.booking_id}`} className="text-link">Open booking context</Link>
+        {report.status === 'OPEN' ? <ActionForm action="message-report.review" data={{ id: report.id }}>
+          <Field label="Review outcome"><select name="status" defaultValue="REVIEWED"><option value="REVIEWED">Reviewed; no further action</option><option value="RESOLVED">Resolved; follow-up completed</option></select></Field>
+          <Field label="Internal review note" hint="Visible to administrators only."><textarea name="internalNote" maxLength={2000} rows={3}/></Field>
+          <button className="btn">Save report review</button>
+        </ActionForm> : report.internal_note && <p className="pre-line"><strong>Internal note:</strong> {report.internal_note}</p>}
+      </Panel>)}
+      {!reports.length && <Empty title="No message reports." >Reports submitted by booking participants will appear here.</Empty>}
     </>);
 }

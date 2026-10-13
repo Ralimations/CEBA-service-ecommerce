@@ -52,3 +52,15 @@ These labels separate PDF requests from reversible engineering choices made for 
 | Near-event cancellation lock | **Deferred** | No 48-hour restriction is active; existing cancellation/dispute transitions remain. | Choose a window and emergency escalation workflow before enabling a lock. |
 | Messaging and full theme switch | **Deferred** | No chat or partial dark mode was introduced. | Approve privacy/retention/moderation and complete theme/contrast direction. |
 | Fees, refunds, voucher compensation, and payment plan | **Deferred / not approved** | No monetary penalty, real refund, or payment gateway was added. | Resolve amounts, eligibility, exceptions, operations, and finance/legal requirements. |
+
+## Emerald continuation decisions (2026-10-13)
+
+These branch implementation notes supersede stale “deferred” wording in earlier continuation rows where indicated. They do not imply stakeholder approval.
+
+| Topic | Branch implementation | Decision still required |
+|---|---|---|
+| Emerald Editorial Luxury tokens | Implemented using deep/olive emerald with pearl/silver light surfaces and dedicated dark surfaces; system preference remains supported. | Approve final brand colors, header treatment, and contrast direction. |
+| Booking messages | Existing item-scoped participant access retained; bundle E2E now verifies separate suppliers and cross-customer isolation. | Approve allowed booking states, moderation owner, retention duration and deletion process. |
+| Message reporting | New participant report stores a specific message reference and reason; admin sees only that message plus booking/provider context. Review actions are audited. | Approve categories, response process, privacy notice, and report/conversation retention. |
+| Deadline reminders | Deterministic two-hour-window reminders are created on participant visits. | Decide whether/which reliable scheduler should send reminders without a visit. Current daily cron is not exact-time delivery and remains inactive. |
+| Loyalty monetary benefits | No birthday or rank money is issued; monetary flag remains false. | Approve eligibility, personal-data handling, caps, expiry, stacking, and anti-abuse controls before implementation. |

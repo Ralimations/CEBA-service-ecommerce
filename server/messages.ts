@@ -1,10 +1,15 @@
 import { z } from 'zod';
 import { assert, requireRole, type User } from '@/lib/domain';
-import { all, id, insert, now, one, run, transaction } from './db';
+import { all, audit, id, insert, now, one, run, transaction } from './db';
 
 const messageSchema = z.object({
   itemId: z.string().uuid(),
   body: z.string().trim().min(1).max(4000),
+});
+const reportSchema = z.object({
+  messageId: z.string().uuid(),
+  category: z.enum(['HARASSMENT', 'SPAM', 'SAFETY', 'OTHER']),
+  details: z.string().trim().max(1000).default(''),
 });
 
 type Conversation = {
@@ -110,4 +115,51 @@ export async function sendBookingMessage(user: User, input: unknown) {
     });
     return { message: 'Message sent.', messageId };
   });
+}
+
+export async function reportBookingMessage(user: User, input: unknown) {
+  enabled();
+  requireRole(user, 'CUSTOMER', 'PROVIDER');
+  const data = reportSchema.parse(input);
+  const message = await one<{ id: string; booking_item_id: string; sender_id: string }>(
+    'SELECT id,booking_item_id,sender_id FROM booking_messages WHERE id=?', data.messageId,
+  );
+  assert(message, 'Message not found.', 404);
+  await conversation(user, message.booking_item_id);
+  assert(message.sender_id !== user.id, 'You can report messages from the other booking participant.', 400);
+  const reportId = id();
+  await run(`INSERT INTO booking_message_reports(id,message_id,reporter_id,category,details)
+    VALUES(?,?,?,?,?) ON CONFLICT(message_id,reporter_id) DO NOTHING`,
+    reportId, message.id, user.id, data.category, data.details);
+  return { message: 'The message was sent to the administrator review queue.' };
+}
+
+export async function bookingMessageReports(user: User) {
+  requireRole(user, 'ADMIN');
+  return all<{
+    id: string; message_id: string; category: string; details: string; status: string;
+    internal_note: string; created_at: string; reviewed_at: string | null;
+    reporter_name: string; sender_name: string; message_body: string;
+    booking_id: string; booking_title: string; provider_name: string;
+  }>(`SELECT r.id,r.message_id,r.category,r.details,r.status,r.internal_note,r.created_at,r.reviewed_at,
+      reporter.name reporter_name,sender.name sender_name,m.body message_body,b.id booking_id,
+      b.title booking_title,p.business_name provider_name
+    FROM booking_message_reports r JOIN booking_messages m ON m.id=r.message_id
+    JOIN users reporter ON reporter.id=r.reporter_id JOIN users sender ON sender.id=m.sender_id
+    JOIN booking_items i ON i.id=m.booking_item_id JOIN bookings b ON b.id=i.booking_id
+    JOIN providers p ON p.id=i.provider_id ORDER BY CASE WHEN r.status='OPEN' THEN 0 ELSE 1 END,r.created_at DESC`);
+}
+
+export async function reviewBookingMessageReport(user: User, input: unknown) {
+  requireRole(user, 'ADMIN');
+  const data = z.object({
+    id: z.string().uuid(), status: z.enum(['REVIEWED', 'RESOLVED']),
+    internalNote: z.string().trim().max(2000).default(''),
+  }).parse(input);
+  const result = await run(`UPDATE booking_message_reports
+    SET status=?,internal_note=?,reviewed_by=?,reviewed_at=? WHERE id=? AND status='OPEN'`,
+    data.status, data.internalNote, user.id, now(), data.id);
+  assert(result.changes === 1, 'This report has already been reviewed.', 409);
+  await audit(user.id, 'Booking message report reviewed', `${data.id}:${data.status}`);
+  return { message: 'Message report review saved.' };
 }

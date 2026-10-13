@@ -29,7 +29,7 @@ async function SessionHeader() {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
     return (<html lang="en" data-scroll-behavior="smooth" suppressHydrationWarning>
       <head>
-        <Script id="soireesource-theme-init" strategy="beforeInteractive">{`(function(){try{var saved=localStorage.getItem('soiree-source-theme');var mode=saved==='dark'||saved==='light'?saved:(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.dataset.theme=mode}catch(_){document.documentElement.dataset.theme='light'}})()`}</Script>
+        <Script id="soireesource-theme-init" strategy="beforeInteractive">{`(function(){try{var key='soiree-source-theme';var media=window.matchMedia('(prefers-color-scheme: dark)');var mode=localStorage.getItem(key)||'system';var apply=function(){document.documentElement.dataset.theme=mode==='system'?(media.matches?'dark':'light'):mode};apply();if(media.addEventListener)media.addEventListener('change',function(){if(localStorage.getItem(key)==='system')apply()})}catch(_){document.documentElement.dataset.theme='light'}})()`}</Script>
       </head>
       <body>
         <a className="skip-link" href="#main-content">

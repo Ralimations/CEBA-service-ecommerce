@@ -13,7 +13,7 @@ import { ProviderOverview, ProviderProfile, ProviderCalendar, ProviderBundles, P
 import { ProviderServices, ServiceEditor, ProviderPackages } from '@/features/provider/services';
 import { AdminOverview, AdminUsers, AdminProviders, AdminProviderDetail, AdminServices, AdminCategories, AdminBadges, AdminSettings, AdminAudit, } from '@/features/admin/pages';
 import { AdminBundles, AdminBundleEditor } from '@/features/admin/bundles';
-import { AdminVouchers, VoucherEditor, AdminSubscriptions, AdminPlacements, AdminDisputes, AdminEscrow, AdminSupport, } from '@/features/admin/operations';
+import { AdminVouchers, VoucherEditor, AdminSubscriptions, AdminPlacements, AdminDisputes, AdminEscrow, AdminSupport, AdminMessageReports, } from '@/features/admin/operations';
 import { DomainError } from '@/lib/domain';
 import { eventDate } from '@/server/bookings';
 import { RouteLoadingSkeleton } from '@/components/loading-skeleton';
@@ -240,6 +240,9 @@ async function RouteContent({ params, searchParams }: Props) {
                 break;
             case 'support':
                 page = <AdminSupport user={active}/>;
+                break;
+            case 'messages':
+                page = <AdminMessageReports user={active}/>;
                 break;
             case 'settings':
                 page = <AdminSettings />;

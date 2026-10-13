@@ -158,7 +158,7 @@ try {
 
   await runStep('TypeScript', process.execPath, [npmCli, 'run', 'typecheck'], baseEnv);
   await runStep('ESLint', process.execPath, [npmCli, 'run', 'lint'], baseEnv);
-  await runStep('PostgreSQL migration semantics 002–007', process.execPath,
+  await runStep('PostgreSQL migration semantics 002–008', process.execPath,
     ['--import', 'tsx', 'tests/postgres-migrations.ts'], baseEnv);
   const realPgOutput = await runStep(
     'PostgreSQL business integration suite', process.execPath,

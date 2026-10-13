@@ -8,6 +8,7 @@ import { reviewPublicAppeal } from './public-support';
 import { reviewProviderCancellation } from './cancellations';
 import { dailyCheckIn } from './loyalty';
 import { recordSimulatedInstallment } from './deposits';
+import { reviewBookingMessageReport } from './messages';
 const str = (d: Record<string, unknown>, key: string) => z.string().min(1).max(5000).parse(d[key]);
 export async function executeAction(user: User | null, action: string, data: Record<string, unknown>) {
     requireRole(user, 'CUSTOMER', 'PROVIDER', 'ADMIN');
@@ -94,6 +95,8 @@ export async function executeAction(user: User | null, action: string, data: Rec
             return (await reviewProviderCancellation(user, data));
         case 'cancellation-request.review':
             return (await book.reviewProviderCancellationRequest(user, data));
+        case 'message-report.review':
+            return (await reviewBookingMessageReport(user, data));
         case 'loyalty.checkin':
             return (await dailyCheckIn(user));
         case 'notifications.read':

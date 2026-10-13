@@ -76,9 +76,68 @@ test('bundle draft, supplier terms, publication, and multi-provider customer req
   await c.getByLabel('Venue / location').fill('A quiet celebration garden in Manila');
   await c.getByRole('button', { name: 'Request your date' }).click();
   await expect(c).toHaveURL(/\/bookings\/[a-f0-9-]+$/);
+  const bookingPath = new URL(c.url()).pathname;
   await expect(c.getByText('Waiting for 2 provider acceptance(s).')).toBeVisible();
   await expect(c.getByRole('link', { name: 'Luna Lens Photography', exact: true })).toBeVisible();
   await expect(c.getByRole('link', { name: 'Velvet Glow Makeup', exact: true })).toBeVisible();
+  const customerThreads = c.locator('.booking-messages');
+  await expect(customerThreads).toHaveCount(2);
+  const conversationIds = await customerThreads.evaluateAll((threads) =>
+    threads.map((thread) => (thread as HTMLElement).dataset.itemId!),
+  );
+  const bundleMessages = [
+    'Can we confirm the photography arrival time?',
+    'Could you share the makeup preparation schedule?',
+  ];
+  for (const [index, message] of bundleMessages.entries()) {
+    const thread = c.locator(`.booking-messages[data-item-id="${conversationIds[index]}"]`);
+    await thread.getByLabel('Write a booking message').fill(message);
+    await thread.getByRole('button', { name: 'Send', exact: true }).click();
+    await expect(thread.getByText(message)).toBeVisible();
+  }
+  const injectionText = '<img src=x onerror=alert(1)>';
+  const injectionThread = c.locator(`.booking-messages[data-item-id="${conversationIds[0]}"]`);
+  await injectionThread.getByLabel('Write a booking message').fill(injectionText);
+  await injectionThread.getByRole('button', { name: 'Send', exact: true }).click();
+  await expect(injectionThread.locator('.message-body').getByText(injectionText)).toBeVisible();
+  await expect(injectionThread.locator('.message-body img')).toHaveCount(0);
+  const oversized = await c.request.post('/api/messages', {
+    data: { itemId: conversationIds[0], body: 'x'.repeat(4001) },
+    headers: { Origin: 'http://127.0.0.1:3100' },
+  });
+  expect(oversized.status()).toBe(400);
+  await c.setViewportSize({ width: 390, height: 844 });
+  await noOverflow(c);
+  await c.screenshot({ path: 'artifacts/bundle-messages-mobile.png', fullPage: true });
+  for (const [index, role] of ['provider', 'provider5'].entries()) {
+    const providerContext = await browser.newContext({ baseURL: 'http://127.0.0.1:3100' });
+    const provider = await providerContext.newPage();
+    await login(provider, role);
+    await provider.goto(bookingPath);
+    const providerThreads = provider.locator('.booking-messages');
+    await expect(providerThreads).toHaveCount(1);
+    await expect(provider.locator(`.booking-messages[data-item-id="${conversationIds[index]}"]`)
+      .getByText(bundleMessages[index])).toBeVisible();
+    await expect(provider.locator('.booking-messages').getByText(bundleMessages[1 - index]))
+      .toHaveCount(0);
+    const reply = `Supplier ${index + 1} has received the event notes.`;
+    const providerThread = provider.locator(`.booking-messages[data-item-id="${conversationIds[index]}"]`);
+    await providerThread.getByLabel('Write a booking message').fill(reply);
+    await providerThread.getByRole('button', { name: 'Send', exact: true }).click();
+    await expect(providerThread.getByText(reply)).toBeVisible();
+    await c.reload();
+    await expect(c.locator(`.booking-messages[data-item-id="${conversationIds[index]}"]`).getByText(reply))
+      .toBeVisible();
+    await providerContext.close();
+  }
+  const otherCustomerContext = await browser.newContext({ baseURL: 'http://127.0.0.1:3100' });
+  const otherCustomer = await otherCustomerContext.newPage();
+  await login(otherCustomer, 'customer');
+  for (const itemId of conversationIds) {
+    const denied = await otherCustomer.request.get(`/api/messages?itemId=${encodeURIComponent(itemId)}`);
+    expect(denied.status()).toBe(404);
+  }
+  await otherCustomerContext.close();
   await c.screenshot({ path: 'artifacts/bundle-booking.png', fullPage: true });
   await cc.close();
   await ac.close();
@@ -125,7 +184,7 @@ test('marketplace discovery and responsive desktop, tablet, and mobile layouts',
   page,
 }) => {
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: /Big moments/ })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Make it a moment/ })).toBeVisible();
   await expect(page.locator('img').first()).toBeVisible();
   expect(
     await page
@@ -155,9 +214,45 @@ test('marketplace discovery and responsive desktop, tablet, and mobile layouts',
   await page.getByRole('button', { name: 'Apply filters' }).click();
   await expect(page.locator('.service-card')).toHaveCount(2);
   await noOverflow(page);
+  await page.screenshot({ path: 'artifacts/browse-filtered-light-mobile.png', fullPage: true });
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.screenshot({ path: 'artifacts/browse-filtered-light.png', fullPage: true });
   await page.locator('.service-card').first().getByRole('link').first().click();
   await expect(page.getByRole('heading', { name: 'Make it a date.' })).toBeVisible();
   await noOverflow(page);
+  await page.screenshot({ path: 'artifacts/service-detail-light.png', fullPage: true });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await noOverflow(page);
+  await page.screenshot({ path: 'artifacts/service-detail-light-mobile.png', fullPage: true });
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto('/providers/provider-0');
+  await expect(page.locator('main h1').first()).toBeVisible();
+  await page.screenshot({ path: 'artifacts/provider-detail-light.png', fullPage: true });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await noOverflow(page);
+  await page.screenshot({ path: 'artifacts/provider-detail-light-mobile.png', fullPage: true });
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto('/bundles');
+  await expect(page.locator('main h1').first()).toBeVisible();
+  await page.screenshot({ path: 'artifacts/bundles-light.png', fullPage: true });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await noOverflow(page);
+  await page.screenshot({ path: 'artifacts/bundles-light-mobile.png', fullPage: true });
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto('/login');
+  await expect(page.getByLabel('Email address', { exact: true })).toBeVisible();
+  await page.screenshot({ path: 'artifacts/login-light.png', fullPage: true });
+  await page.goto('/support');
+  await expect(page.getByRole('heading', { name: 'A little help goes a long way.' })).toBeVisible();
+  await page.screenshot({ path: 'artifacts/support-light.png', fullPage: true });
+  await page.goto('/');
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await page.evaluate(() => localStorage.setItem('soiree-source-theme', 'dark'));
+  await page.reload();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  await page.screenshot({ path: 'artifacts/home-dark-desktop.png', fullPage: true });
+  await page.goto('/browse');
+  await page.screenshot({ path: 'artifacts/browse-dark.png', fullPage: true });
   await page.getByRole('button', { name: 'Open event help' }).click();
   await page.getByRole('button', { name: 'How do payments and escrow work?' }).click();
   await expect(page.locator('.chat-widget')).toContainText('No real money is transferred');
@@ -179,6 +274,7 @@ test('customer registration through payment, provider acceptance, two QR gates, 
   await c.getByRole('checkbox', { name: /agree to the Terms of Service/ }).check();
   await c.getByRole('button', { name: 'Create your account' }).click();
   await expect(c).toHaveURL(/\/dashboard$/);
+  await c.screenshot({ path: 'artifacts/customer-dashboard-light.png', fullPage: true });
   await c.goto('/vouchers');
   await expect(c.getByRole('heading', { name: 'WELCOME10', exact: true })).toBeVisible();
   await c.goto('/services/service-0-0');
@@ -207,6 +303,25 @@ test('customer registration through payment, provider acceptance, two QR gates, 
   await expect(providerThread.getByText('The team will arrive during the agreed setup window.')).toBeVisible();
   await c.reload();
   await expect(c.locator('.booking-messages').getByText('The team will arrive during the agreed setup window.')).toBeVisible();
+  const received = c.locator('.booking-messages').locator('.message-bubble').filter({
+    hasText: 'The team will arrive during the agreed setup window.',
+  });
+  await received.getByText('Report message', { exact: true }).click();
+  await received.getByLabel('Reason').selectOption('OTHER');
+  await received.getByLabel('Details (optional)').fill('Please review this booking message.');
+  await received.getByRole('button', { name: 'Send report' }).click();
+  await expect(received.getByText('Report sent for administrator review.')).toBeVisible();
+  const reportAdmin = await browser.newPage({ baseURL: 'http://127.0.0.1:3100' });
+  await login(reportAdmin, 'admin');
+  await reportAdmin.goto('/admin/messages');
+  await expect(reportAdmin.locator('.reported-message')).toHaveText('The team will arrive during the agreed setup window.');
+  await expect(reportAdmin.getByText('Please review this booking message.')).toBeVisible();
+  await expect(reportAdmin.getByText(firstMessage, { exact: true })).toHaveCount(0);
+  await reportAdmin.getByLabel('Review outcome').selectOption('RESOLVED');
+  await reportAdmin.getByLabel('Internal review note').fill('Reviewed the reported message in booking context.');
+  await reportAdmin.getByRole('button', { name: 'Save report review' }).click();
+  await expect(reportAdmin.getByText('Resolved', { exact: true })).toBeVisible();
+  await reportAdmin.close();
   const unrelated = await browser.newPage({ baseURL: 'http://127.0.0.1:3100' });
   await login(unrelated, 'provider2');
   const deniedMessages = await unrelated.request.get(`/api/messages?itemId=${encodeURIComponent(itemId!)}`);
@@ -447,7 +562,7 @@ test('light and dark themes respect system preference, persist, meet text contra
   expect(await contrast('body')).toBeGreaterThanOrEqual(4.5);
   expect(await contrast('.service-card:first-of-type')).toBeGreaterThanOrEqual(4.5);
 
-  await page.getByRole('button', { name: 'Toggle light and dark theme' }).click();
+  await page.getByRole('button', { name: /Cycle color theme preference/ }).click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
   expect(await page.evaluate(() => localStorage.getItem('soiree-source-theme'))).toBe('light');
   expect(await contrast('body')).toBeGreaterThanOrEqual(4.5);
@@ -457,7 +572,7 @@ test('light and dark themes respect system preference, persist, meet text contra
   await page.reload();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
 
-  await page.getByRole('button', { name: 'Toggle light and dark theme' }).click();
+  await page.getByRole('button', { name: /Cycle color theme preference/ }).click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   await page.reload();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');

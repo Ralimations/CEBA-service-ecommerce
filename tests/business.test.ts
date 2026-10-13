@@ -146,6 +146,21 @@ test('visit-driven booking and featured expiry reminders are delivered only once
     assert.equal((await one<{
         n: number;
     }>('SELECT COUNT(*)::int n FROM notifications WHERE id=?', `reminder-${bookingId}-${c.id}`))!.n, 1);
+    const pendingId = await request(c, day(20));
+    const responseDeadline = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+    await run('UPDATE bookings SET response_deadline_at=? WHERE id=?', responseDeadline, pendingId);
+    await deliverReminders(c);
+    await deliverReminders(c);
+    await deliverReminders(providerUser);
+    await deliverReminders(providerUser);
+    assert.equal((await one<{ n: number }>(
+        'SELECT COUNT(*)::int n FROM notifications WHERE id=?',
+        `booking-deadline-reminder-${pendingId}-customer`,
+    ))!.n, 1);
+    assert.equal((await one<{ n: number }>(
+        'SELECT COUNT(*)::int n FROM notifications WHERE id=?',
+        `booking-deadline-reminder-${pendingId}-${providerUser.id}`,
+    ))!.n, 1);
     const placementId = id();
     (await insert('placements', {
         id: placementId,

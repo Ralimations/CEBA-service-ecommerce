@@ -24,6 +24,7 @@ import {
   Layers,
   ChartNoAxesCombined,
   Sun,
+  MessageSquareWarning,
 } from 'lucide-react';
 import { platform } from '@/config/platform';
 import { ActionForm } from './action-form';
@@ -40,9 +41,11 @@ export function HeaderPlaceholder() {
 function HeaderView({ user, unread, pending = false, path }: { user: User | null; unread: number; pending?: boolean; path: string }) {
   const [open, setOpen] = useState(false);
   function toggleTheme() {
-    const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+    const current = localStorage.getItem('soiree-source-theme') || 'system';
+    const next = current === 'system' ? 'light' : current === 'light' ? 'dark' : 'system';
     localStorage.setItem('soiree-source-theme', next);
-    document.documentElement.dataset.theme = next;
+    const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    document.documentElement.dataset.theme = next === 'system' ? systemTheme : next;
   }
   return (
     <header className="site-header">
@@ -77,7 +80,8 @@ function HeaderView({ user, unread, pending = false, path }: { user: User | null
         </nav>
         <div className="header-actions">
           <button className="icon-button theme-toggle" type="button" onClick={toggleTheme}
-            aria-label="Toggle light and dark theme" title="Toggle light and dark theme">
+            aria-label="Cycle color theme preference: system, light, and dark"
+            title="Change color theme">
             <Sun size={18}/>
           </button>
           {pending ? <span className="muted" role="status">Loading account…</span> : user ? (
@@ -160,6 +164,7 @@ const adminNav = [
   ['/admin/disputes', 'Disputes', ShieldCheck],
   ['/admin/escrow', 'Escrow ledger', Wallet],
   ['/admin/support', 'Support tickets', LifeBuoy],
+  ['/admin/messages', 'Message reports', MessageSquareWarning],
   ['/admin/settings', 'Platform settings', Settings],
   ['/admin/audit', 'Audit trail', ChartNoAxesCombined],
 ] as const;

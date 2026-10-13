@@ -20,6 +20,8 @@ export function BookingMessages({ itemId, viewerId }: { itemId: string; viewerId
   const [body, setBody] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [reporting, setReporting] = useState(false);
+  const [reported, setReported] = useState<string[]>([]);
 
   const refresh = useCallback(async () => {
     try {
@@ -71,6 +73,28 @@ export function BookingMessages({ itemId, viewerId }: { itemId: string; viewerId
     }
   }
 
+  async function report(messageId: string, form: HTMLFormElement) {
+    if (reporting || reported.includes(messageId)) return;
+    setReporting(true);
+    setError('');
+    const fields = new FormData(form);
+    try {
+      const response = await fetch('/api/messages/report', {
+        method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messageId, category: fields.get('category'), details: fields.get('details') || '' }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Report could not be submitted.');
+      setReported((existing) => [...existing, messageId]);
+      form.reset();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Report could not be submitted.');
+    } finally {
+      setReporting(false);
+    }
+  }
+
   return <section className="booking-messages panel" data-item-id={itemId} aria-label={`Messages with ${thread?.providerName || 'provider'}`}>
     <div className="row between">
       <div><h2>Messages</h2><p>Private to this booking and provider.</p></div>
@@ -82,6 +106,23 @@ export function BookingMessages({ itemId, viewerId }: { itemId: string; viewerId
       {thread?.messages.length === 0 && <p className="muted">Start a conversation about this booking.</p>}
       {thread?.messages.map((message) => <article className={`message-bubble ${message.sender_id === viewerId ? 'mine' : ''}`} key={message.id}>
         <p className="message-body">{message.body}</p><time dateTime={message.created_at}>{timeLabel(message.created_at)}</time>
+        {message.sender_id !== viewerId && (reported.includes(message.id)
+          ? <small role="status" className="message-report-status">Report sent for administrator review.</small>
+          : <details className="message-report-control">
+              <summary>Report message</summary>
+              <form onSubmit={(event) => { event.preventDefault(); void report(message.id, event.currentTarget); }}>
+                <label htmlFor={`report-category-${message.id}`}>Reason</label>
+                <select id={`report-category-${message.id}`} name="category" defaultValue="HARASSMENT">
+                  <option value="HARASSMENT">Harassment or disrespect</option>
+                  <option value="SPAM">Spam or unwanted solicitation</option>
+                  <option value="SAFETY">Safety concern</option>
+                  <option value="OTHER">Other concern</option>
+                </select>
+                <label htmlFor={`report-details-${message.id}`}>Details (optional)</label>
+                <textarea id={`report-details-${message.id}`} name="details" maxLength={1000} rows={2}/>
+                <button className="btn secondary small" type="submit" disabled={reporting}>Send report</button>
+              </form>
+            </details>)}
       </article>)}
     </div>
     {thread?.canSend && <form className="message-compose" onSubmit={(event) => { event.preventDefault(); void send(); }}>

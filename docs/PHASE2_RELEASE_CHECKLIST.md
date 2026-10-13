@@ -16,9 +16,11 @@ This checklist is for a future reviewed rollout. The migrations below are prepar
 
 1. **Baseline:** `database/schema.postgres.sql` (idempotent PostgreSQL schema used by this application).
 2. **002–007:** Apply `database/migrations/002_public_account_support.sql` through `007_simulated_deposit_prototype.sql` in numeric order.
+3. **008:** Apply `database/migrations/008_booking_message_reports.sql` after 002–007; it adds report metadata and does not alter message content or bookings.
 
 - [ ] Back up the target database and verify restore access before applying changes.
-- [ ] Apply baseline and migrations 002–007 first to isolated PostgreSQL; record schema versions 1–7.
+- [x] Applied baseline and migrations 002–007 to disposable PostgreSQL 17.11 during verification; migration suite passed.
+- [x] Applied migration 008 to disposable PostgreSQL and confirmed rerun behavior, participant-linked reports, and audited admin review actions.
 - [ ] Confirm migration reruns are idempotent and the append-only triggers still reject updates/deletes.
 - [ ] Confirm historical pending bookings retain a `NULL` response deadline. Do not backfill or expire them without a separate approved plan.
 - [ ] Confirm migration review-history tables contain no unintended seeded or test data.
@@ -33,13 +35,16 @@ This checklist is for a future reviewed rollout. The migrations below are prepar
 
 ## Regression and acceptance checks
 
-- [ ] Run `npm run verify:phase2` (disposable PostgreSQL 17, migration and business suite, production build, Playwright). PGlite is not the canonical compatibility result.
+- [x] Run `npm run verify:phase2` (disposable PostgreSQL 17.11, migrations 002–008, 34/34 business tests, production build, 10/10 Playwright). PGlite is not the canonical compatibility result.
 - [ ] Run migrations 002–007 against a fresh isolated PostgreSQL schema and an existing-data copy.
 - [ ] Test appeal validation, generic confirmation, per-email rate limit, honeypot, admin-only reading, status/notes, and no account reinstatement.
 - [ ] Test provider acceptance before/after deadline, old pending row behavior, partial bundle expiry, concurrent accept/expire/cancel, reservation release, voucher reuse, idempotency, and notifications.
 - [ ] Test structured reason validation, Other text privacy, moderation permissions, append-only review history, customer-visible approval, and unchanged cancellation/payment transitions.
-- [ ] Verify admin provider detail for suspended providers at 1440, 768, and 390 pixels; verify customer, ordinary provider, and anonymous access denial; verify public marketplace exclusion.
-- [ ] Capture and review screenshots for all three viewport sizes.
+- [x] Test bundle chat as customer and each provider, cross-item/provider/customer access denial, message length and HTML text handling, report submission, and admin review without exposing full conversation history.
+- [x] Verify two-hour deadline reminders are unique, scoped to the customer and participating providers, and described as visit-driven rather than exact-time delivery.
+- [x] Verify admin provider detail for suspended providers at 1440, 768, and 390 pixels; verify customer, ordinary provider, and anonymous access denial; verify public marketplace exclusion.
+- [x] Capture and review baseline and post-redesign screenshots across desktop, tablet, and mobile; see `artifacts/EMERALD_VISUAL_INDEX.md`.
+- [ ] Review the baseline/post-redesign visual index; complete route-specific dark-mode review and an axe/WCAG 2.2 AA audit before claiming full visual/accessibility completion.
 - [ ] Verify existing payment simulation, dual QR handshake, service-fee calculations, cache behavior, and public browsing.
 
 ## Feature flags, monitoring, and cache
@@ -61,6 +66,8 @@ This checklist is for a future reviewed rollout. The migrations below are prepar
 
 - [ ] Confirm the Vercel plan supports the configured cron cadence and set `CRON_SECRET` in the intended environment.
 - [ ] Keep `FEATURE_BOOKING_MESSAGING`, `FEATURE_PROVIDER_CANCELLATION_POLICY`, `FEATURE_LOYALTY_BETA`, and `FEATURE_SIMULATED_DEPOSITS` off until the corresponding provisional decisions are reviewed. Monetary loyalty rewards remain off.
+- [ ] Approve message-report categories, handling/retention policy and customer notice before enabling messaging in a real environment.
+- [ ] Confirm deadline reminder timing and cron deployment guarantees; the visit-driven reminder is not a scheduled delivery guarantee.
 
 - [ ] Reviewer accepts the implementation report and stakeholder review decisions.
 - [ ] PostgreSQL and browser evidence is attached to the release record.
