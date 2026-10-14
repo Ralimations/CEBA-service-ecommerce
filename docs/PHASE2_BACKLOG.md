@@ -52,7 +52,7 @@ Complexity uses S/M/L/XL as a relative engineering estimate. All testing that mu
 - **Acceptance criteria:** Display wording is consistent; internal `platform_fee` and `platformFee` stay intact; totals and supplier allocation do not change.
 - **Tests:** Business financial allocation tests; fee-settings UI assertion.
 
-### P1.3 Public suspended-account support intake — implemented, awaiting stakeholder acceptance
+### P1.3 Public suspended-account support intake — implemented; operational details remain
 
 - **Description:** Provide an actual support request channel without granting account access.
 - **Why:** Current public support is FAQ-only and ticket creation requires login.
@@ -62,7 +62,7 @@ Complexity uses S/M/L/XL as a relative engineering estimate. All testing that mu
 - **Acceptance criteria:** Generic response that reveals no account existence; validated lengths; server-side rate limits and spam trap; admin-only queue; no automatic reinstatement; no unsupported email address.
 - **Tests:** Isolated tests for limits, generic responses, abuse inputs, and admin authorization.
 
-### P1.4 Cancellation-reason moderation — implemented provisionally, awaiting product approval
+### P1.4 Cancellation-reason moderation — implemented provisionally; owner is acceptance authority
 
 - **Description:** Replace provider-only free text with approved reason codes and admin review for custom text.
 - **Why:** Maintain professional customer-visible communication and an audit record.
@@ -104,8 +104,8 @@ Complexity uses S/M/L/XL as a relative engineering estimate. All testing that mu
 | P0.2 deployed pilot incident review | **Blocked on operational access** | No pilot environment was queried. Obtain the incident build, logs, and authorized read-only verification separately. |
 | P1.1 Service Fee wording | **Completed** | Presentation-only change; provider allocation and internal fee names are unchanged. |
 | P1.2 suspended provider admin record | **Implemented and verified locally** | Role/provider access, customer/provider/anonymous denial, public marketplace exclusion, and 1440/768/390 layouts passed the real-PostgreSQL Playwright suite. No shared or production database was queried. |
-| P1.3 public account support | **Implemented, awaiting stakeholder acceptance** | Generic public intake, rate-limit/honeypot, admin-only queue and internal notes. No email delivery, no auto-reinstatement; stronger spam controls and operating owner remain open. |
-| P1.4 provider cancellation reason moderation | **Implemented provisionally, awaiting stakeholder acceptance** | One primary code; Other text private pending append-only admin decision. Near-event restrictions remain off. |
+| P1.3 public account support | **Implemented; owner is acceptance authority** | Generic public intake, rate-limit/honeypot, admin-only queue and internal notes. Final local PostgreSQL/browser verification passed. No email delivery or auto-reinstatement; stronger spam controls and an operating owner remain open. |
+| P1.4 provider cancellation reason moderation | **Implemented provisionally; owner is acceptance authority** | One primary code; Other text private pending append-only admin decision. Near-event restrictions remain off; exact operating policy remains provisional. |
 | P2.1 response deadline and expiry | **Implemented provisionally, real PostgreSQL validation pending** | New rows get 24 hours; old pending rows remain deadline-null; due bundles expire atomically on relevant access/action. No scheduled reconciler. |
 | P2.2 late cancellation, fees, refunds and compensation | **Deferred** | Existing dispute behavior retained; no financial consequences or near-date lock activated. |
 | P2.3 customer-provider messaging | **Deferred** | Earlier priorities require stable browser/database verification and approved privacy/retention/moderation rules. |
@@ -199,3 +199,16 @@ Keep the Emerald reference pack untracked/preserved. Do not push the branch unti
 - **Complexity:** XL.
 - **Acceptance criteria:** Separate approved product and compliance plan; no user funds or liabilities created by this marketplace sprint.
 - **Tests:** Not applicable until scoped.
+
+## Final PDF compliance sprint (2026-10-14)
+
+| Work | Status | Evidence / follow-up |
+|---|---|---|
+| PDF issue/feature audit | Complete | `FINAL_PDF_COMPLIANCE_AUDIT.md` maps every concern, proposal, contradiction, code path, test, result, and remaining issue. |
+| Emerald design and responsive route review | Implemented; local visual evidence reviewed | `artifacts/EMERALD_VISUAL_INDEX.md`; production visual state remains unverified. |
+| Provider-paid fee wording | Implemented and verified | Customer/provider/admin labels and seeded bundle copy say “Service Fee”; storage/calculation unchanged. |
+| Monetary loyalty concept simulation | Implemented, flag-gated | Preview shows only the PDF's terms. No real redemption, personal birthday data, voucher issuance, or checkout effect. |
+| Local release verification | Final run recorded in production report | Disposable PostgreSQL, migrations 002–008, business and browser suites, production build/probes, accessibility, and enabled/disabled flags. |
+| Production database and Vercel release | Blocked by technical prerequisite | No verified production project reference, schema/migration state, backup/restore drill, deployment config, or live CI. No production change or merge. |
+
+The project owner has authorized a conditional merge and remains acceptance authority; no separate stakeholder meeting is required. Release still stops before production migration and merge when backup/restore cannot be proven, as documented in the owner brief.

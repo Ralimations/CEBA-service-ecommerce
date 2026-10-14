@@ -1,6 +1,8 @@
-# Phase 2 RC2 deployment runbook
+# Phase 2 RC2 cloud-staging runbook
 
 This runbook is for a later explicitly authorized staging deployment. No staging URL or cloud configuration was verified during RC2.
+
+**Current release authority:** the project owner has authorized a conditional Phase 2 merge; a separate stakeholder meeting is not required. For the final production gate and rollback steps, use `PHASE2_PRODUCTION_RELEASE_REPORT.md`, `PHASE2_PRODUCTION_ROLLBACK_RUNBOOK.md`, and `PHASE2_RELEASE_CHECKLIST.md`. This RC2 document records staging preparation and must not override the backup/restore gate.
 
 ## Required access and evidence
 
@@ -55,6 +57,6 @@ Test the cron handler directly on isolated data for missing/invalid/valid secret
 
 ## Production prerequisites and rollback
 
-Production requires separately approved release authorization, stakeholder policy decisions, reviewed migration/backup/restore plan, protected CI, security/accessibility review, dependency findings, production flag matrix, cron activation decision, monitoring, named rollback owner, and a maintenance/incident plan. RC2 does not grant that authorization.
+Production release is conditionally authorized by the project owner. It still requires verified project identity, a successful protected backup and isolated restore drill, reviewed pending migrations, compatible rollback plan, exact-commit remote CI, production monitoring, and verification of the existing deployment integration. A missing backup/restore proof blocks migration and merge.
 
 Rollback first disables the affected feature or reverts the application deployment while preserving audit and customer records. Do not delete reports, bookings, messages, or reminders as a rollback shortcut. Schema rollback must be separately reviewed and rehearsed against a restored copy. Never use a production reset, staging credentials, or force-push as rollback.

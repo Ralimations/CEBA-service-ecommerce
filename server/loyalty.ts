@@ -5,6 +5,43 @@ export const loyaltyPoints = { DAILY_CHECK_IN: 5, BOOKING_COMPLETED: 50, REFERRA
 export const monetaryLoyaltyRewardsEnabled = process.env.FEATURE_LOYALTY_MONETARY_REWARDS === 'true';
 const betaEnabled = () => process.env.FEATURE_LOYALTY_BETA === 'true';
 
+const proposedRewardTiers = [
+  {
+    rank: 'Classic',
+    benefits: ['One-time first-user discount; amount and cap are not configured.'],
+  },
+  {
+    rank: 'Silver',
+    benefits: ['Birthday discount: 10%.'],
+  },
+  {
+    rank: 'Gold',
+    benefits: [
+      'Birthday discount: 15%.',
+      'Payment-size voucher: ₱5–₱10; spend thresholds are not configured.',
+      'Bundle-services voucher: 10%.',
+    ],
+  },
+  {
+    rank: 'Platinum',
+    benefits: [
+      'Birthday discount: 20%.',
+      'Payment-size voucher: ₱5–₱15; spend thresholds are not configured.',
+      'Bundle-services voucher: 15%.',
+      'Priority customer service; response-time target is not configured.',
+    ],
+  },
+] as const;
+
+export function loyaltyRewardsPreview(enabled = monetaryLoyaltyRewardsEnabled) {
+  if (!enabled) return null;
+  return {
+    pointValuePhp: 0.01,
+    pointEarningRule: 'Proposed point value: ₱0.01 per point. The point earn rate and redemption rules are not configured.',
+    tiers: proposedRewardTiers,
+  };
+}
+
 export function manilaDateKey(at = new Date()) {
   const parts = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Asia/Manila', year: 'numeric', month: '2-digit', day: '2-digit',
@@ -74,6 +111,7 @@ export async function loyaltyPreferences(user: User) {
   const last = await one<{ reference_key: string; created_at: string }>(
     "SELECT reference_key,created_at FROM experience_ledger WHERE user_id=? AND event_type='DAILY_CHECK_IN' ORDER BY created_at DESC LIMIT 1", user.id,
   );
-  return { enabled: betaEnabled(), monetaryRewardsEnabled: monetaryLoyaltyRewardsEnabled, lastCheckIn: last?.reference_key || null,
+  return { enabled: betaEnabled(), monetaryRewardsEnabled: monetaryLoyaltyRewardsEnabled,
+    rewardsPreview: loyaltyRewardsPreview(), lastCheckIn: last?.reference_key || null,
     summary: await experienceSummary(user.id) };
 }

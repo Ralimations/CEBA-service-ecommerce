@@ -5280,6 +5280,23 @@ input:focus, select:focus, textarea:focus {
 .loyalty-panel { background: var(--featured-gradient); border-color: var(--border-subtle); color: #f3f8f4; }
 .loyalty-panel h2, .loyalty-panel p, .loyalty-panel .eyebrow, .loyalty-panel small { color: #f3f8f4; }
 .loyalty-panel .text-link { color: #b9f1d3; }
+.loyalty-reward-preview {
+  margin-top: 18px;
+  padding: 16px;
+  border: 1px solid #ffffff40;
+  border-radius: 16px;
+  background: #ffffff12;
+}
+.loyalty-reward-preview > .eyebrow { display: block; font-size: 10px; letter-spacing: .12em; }
+.loyalty-reward-preview > p { margin: 8px 0 12px; }
+.loyalty-reward-tiers { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.loyalty-reward-tiers > div { min-width: 0; }
+.loyalty-reward-tiers ul { margin: 5px 0 0; padding-left: 18px; }
+.loyalty-reward-tiers li { margin-top: 4px; color: #e2efe7; font-size: 12px; line-height: 1.5; }
+.loyalty-reward-preview > small { display: block; margin-top: 12px; line-height: 1.5; }
+@media (max-width: 640px) {
+  .loyalty-reward-tiers { grid-template-columns: minmax(0, 1fr); }
+}
 .referral-code { background: var(--surface-sunken); border-color: var(--border-strong); color: var(--success); }
 .site-footer { margin-top: 48px; }
 

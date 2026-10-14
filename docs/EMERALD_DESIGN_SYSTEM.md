@@ -40,6 +40,10 @@ The active CSS tokens are semantic custom properties in `app/globals.css`: backg
 
 Display headings use the installed system stack with Georgia for selective editorial emphasis. Functional UI uses Inter when present, then Aptos/Segoe UI/Arial. No external font download was added. The base spacing rhythm remains 4/8px; cards and sections have extra breathing room on desktop while mobile controls retain a compact single-column flow.
 
+## Header options from the meeting PDF
+
+The current header is **logo + SoiréeSource + “Make it a moment.”** A second low-risk option for review is **logo + SoiréeSource** with no tagline. The current mark remains in use; these are two lockup suggestions, not a request to replace or redraw the logo.
+
 ## Radius and surface hierarchy
 
 | Element | Radius |

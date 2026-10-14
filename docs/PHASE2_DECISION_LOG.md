@@ -72,3 +72,13 @@ These branch implementation notes supersede stale “deferred” wording in earl
 | Message reporting | New participant report stores a specific message reference and reason; admin sees only that message plus booking/provider context. Review actions are audited. | Approve categories, response process, privacy notice, and report/conversation retention. |
 | Deadline reminders | Deterministic two-hour-window reminders are created on participant visits. | Decide whether/which reliable scheduler should send reminders without a visit. Current daily cron is not exact-time delivery and remains inactive. |
 | Loyalty monetary benefits | No birthday or rank money is issued; monetary flag remains false. | Approve eligibility, personal-data handling, caps, expiry, stacking, and anti-abuse controls before implementation. |
+
+## Final compliance sprint update (2026-10-14)
+
+The project owner is the product-acceptance authority for this assignment and has authorized a conditional merge. A separate CEBA/client meeting is not required. Safe engineering defaults below remain explicitly engineering decisions; this update does not claim the PDF stated them.
+
+- Whole-request expiry, one primary cancellation reason, the 48-hour urgent review window, and the 50/50 prototype ledger are reversible defaults. Their monetary effects remain absent and provisional policy flags default off.
+- `FEATURE_LOYALTY_MONETARY_REWARDS` now gates only a text preview of the PDF proposal. XP remains nonredeemable; no birthday data, new voucher, checkout change, refund, or fee assessment is introduced.
+- All user-facing seeded bundle terms use “Service Fee”; database storage and calculations retain the existing `platform_fee` field.
+- The final release brief's backup/restore rule is a hard technical gate. Production identity, production migration state, backup/restore, and Vercel settings could not be verified, so migration, push, merge, and deployment did not occur.
+- See `FINAL_PDF_COMPLIANCE_AUDIT.md`, `PHASE2_FEATURE_FLAG_MATRIX.md`, and `PHASE2_PRODUCTION_RELEASE_REPORT.md` for the final evidence and release status.

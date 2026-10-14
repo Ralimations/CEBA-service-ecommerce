@@ -6,11 +6,11 @@ A local event services marketplace for customers, providers, and administrators.
 
 ## Phase
 
-**Phase 2 RC2 local candidate.** The application includes the Phase 2 booking, messaging, moderation, loyalty, and Emerald UI work. Payment, subscription, promotion, refund, and earnings amounts remain simulations. No real money is collected or transferred. Cloud staging and remote CI are not yet verified; see the [RC2 cloud report](docs/PHASE2_RC2_CLOUD_STAGING_REPORT.md).
+**Phase 2 final compliance candidate (local only).** The application includes Phase 2 booking, messaging, moderation, loyalty preview, simulated deposits, and Emerald UI work. Payment, subscription, promotion, refund, and earnings amounts remain simulations. No real money is collected or transferred. See the [PDF compliance audit](docs/FINAL_PDF_COMPLIANCE_AUDIT.md) and [production release report](docs/PHASE2_PRODUCTION_RELEASE_REPORT.md). Production migration and merge remain blocked until production identity and a backup/restore drill are verified.
 
 See [PHASE1_STATUS.md](PHASE1_STATUS.md) for the feature-by-feature status and assumptions, and [CHANGELOG_PHASE1.md](CHANGELOG_PHASE1.md) for major changes.
 
-Phase 2 implementation is in the review branch `phase2a/meeting-two-feedback`; prepared migrations are not applied to production. See [the combined Phase 2 report](docs/PHASE2_COMBINED_IMPLEMENTATION_REPORT.md) for feature flags, provisional decisions, and reproducible isolated PostgreSQL/browser validation (`npm run verify:phase2`).
+Phase 2 implementation is in the review branch `phase2a/meeting-two-feedback`; prepared migrations are not applied to production. Run `npm run verify:release` for disposable PostgreSQL, migration, business, browser, accessibility, and enabled/disabled feature checks. See the [feature flag matrix](docs/PHASE2_FEATURE_FLAG_MATRIX.md) for defaults and rollout constraints.
 
 ## Installation
 

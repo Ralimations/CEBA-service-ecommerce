@@ -78,6 +78,7 @@ test('bundle draft, supplier terms, publication, and multi-provider customer req
   await c.getByRole('button', { name: 'Request your date' }).click();
   await expect(c).toHaveURL(/\/bookings\/[a-f0-9-]+$/);
   const bookingPath = new URL(c.url()).pathname;
+  await expect(c.getByText('Service Fee (included)', { exact: true })).toBeVisible();
   await expect(c.getByText('Waiting for 2 provider acceptance(s).')).toBeVisible();
   await expect(c.getByRole('link', { name: 'Luna Lens Photography', exact: true })).toBeVisible();
   await expect(c.getByRole('link', { name: 'Velvet Glow Makeup', exact: true })).toBeVisible();
@@ -633,17 +634,19 @@ test('customer loyalty check-in updates once and displays nonredeemable XP', asy
   await page.goto('/profile');
   const experience = page.locator('.experience-panel');
   await expect(experience).toBeVisible();
-  const startingXp = Number((await experience.locator('strong').textContent())?.match(/\d+/)?.[0] || 0);
+  const xpTotal = experience.locator('.experience-total');
+  const startingXp = Number((await xpTotal.textContent())?.match(/\d+/)?.[0] || 0);
   await experience.getByRole('button', { name: 'Check in today · +5 XP' }).click();
   await expect(experience.getByText('Check-in complete. Five experience points added.')).toBeVisible();
-  await expect(experience.locator('strong')).toHaveText(`${startingXp + 5} XP`);
+  await expect(xpTotal).toHaveText(`${startingXp + 5} XP`);
   await experience.getByRole('button', { name: 'Check in today · +5 XP' }).click();
   await expect(experience.getByText('You already checked in for this Philippine calendar day.')).toBeVisible();
   await page.reload();
-  await expect(experience.locator('strong')).toHaveText(`${startingXp + 5} XP`);
+  await expect(xpTotal).toHaveText(`${startingXp + 5} XP`);
   await expect(experience).toContainText('Points cannot be withdrawn or spent.');
   await page.setViewportSize({ width: 390, height: 844 });
   await noOverflow(page);
+  await expect(page.getByTestId('loyalty-reward-preview')).toBeVisible();
   await page.screenshot({ path: 'artifacts/loyalty-checkin-mobile.png', fullPage: true });
 });
 
@@ -653,11 +656,18 @@ test('feature flags respect enabled and disabled server configuration @release-f
   const loyalty = enabled('FEATURE_LOYALTY_BETA');
   const deposits = enabled('FEATURE_SIMULATED_DEPOSITS');
   const cancellationPolicy = enabled('FEATURE_PROVIDER_CANCELLATION_POLICY');
+  const monetaryLoyaltyPreview = enabled('FEATURE_LOYALTY_MONETARY_REWARDS');
   const requestDate = cancellationPolicy ? day(1) : day(300);
 
   await login(page, 'customer');
   await page.goto('/profile');
   await expect(page.locator('.experience-panel')).toHaveCount(loyalty ? 1 : 0);
+  await expect(page.getByTestId('loyalty-reward-preview')).toHaveCount(loyalty && monetaryLoyaltyPreview ? 1 : 0);
+  if (loyalty && monetaryLoyaltyPreview) {
+    await expect(page.getByTestId('loyalty-reward-preview')).toContainText('₱0.01 per point');
+    await expect(page.getByTestId('loyalty-reward-preview')).toContainText('no birthday data is collected');
+    await expect(page.getByTestId('loyalty-reward-preview')).toContainText('checkout prices do not change');
+  }
   await page.goto('/bookings/demo-accepted');
   await expect(page.locator('.booking-messages')).toHaveCount(messaging ? 1 : 0);
 

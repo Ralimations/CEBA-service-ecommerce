@@ -62,6 +62,15 @@ No cloud benchmark or deployed visual capture was possible. RC1's local syntheti
 - Remote CI: pending a safe push/PR after deployment-trigger audit.
 - Staging: blocked on verified isolated database and Vercel environment scopes.
 - Stakeholder demo: walkthrough prepared; hosted access and synthetic accounts pending.
-- Production: **not approved**; no production authorization or change was requested or used.
+- Production: **blocked / not released**. This RC2 snapshot predates the final owner instruction, which conditionally authorizes the merge and requires no separate stakeholder meeting. The later instruction's verified-backup-and-restore stop condition remains unmet, so no production change or merge is permitted under that brief.
 
 The exact blockers and next steps are listed in [the RC2 deployment runbook](PHASE2_RC2_DEPLOYMENT_RUNBOOK.md) and [acceptance matrix](PHASE2_RC2_ACCEPTANCE_MATRIX.md).
+
+## Final compliance/release sprint update (2026-10-14)
+
+- The project owner has now authorized a conditional Phase 2 merge. No separate stakeholder meeting is required; prior wording that Production was not authorized is superseded on the governance point only.
+- The local feature branch and cached `origin/phase2a/meeting-two-feedback` were at `fa32797`; cached `origin/main` was `ce56e4d`, 17 commits behind. A read-only dry-run fetch failed to connect to GitHub (`github.com:443`), so these refs were not verified live.
+- Local Vercel repo metadata identifies `ceba-service-ecommerce`; the current brief says `soiree-source`, and the PDF screenshot shows `soireesource.vercel.app`. The Supabase pooler endpoint does not reveal a project reference. Exact deployment/database identity remains unverified.
+- No Production schema read, migration-history query, backup, restore, push, merge, deployment, feature-flag change, cron activation, or production smoke test occurred.
+- The release brief requires a verified production backup restored in isolation before migration or merge. Since that cannot be completed here, production-changing steps stop at this gate.
+- Full PDF audit, updated flag matrix, final release report, and rollback runbook are available in the `docs/` directory. Local final `npm run verify:release` evidence is in `PHASE2_PRODUCTION_RELEASE_REPORT.md`.

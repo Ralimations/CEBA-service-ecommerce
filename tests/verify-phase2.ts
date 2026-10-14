@@ -143,7 +143,7 @@ const baseEnv: NodeJS.ProcessEnv = {
   FEATURE_PROVIDER_CANCELLATION_POLICY: 'true',
   PROVIDER_CANCELLATION_LOCK_HOURS: '48',
   FEATURE_LOYALTY_BETA: 'true',
-  FEATURE_LOYALTY_MONETARY_REWARDS: 'false',
+  FEATURE_LOYALTY_MONETARY_REWARDS: 'true',
   FEATURE_SIMULATED_DEPOSITS: 'true',
 };
 const npmCli = process.env.npm_execpath;

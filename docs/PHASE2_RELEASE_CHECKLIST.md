@@ -14,15 +14,21 @@ Current RC2 status: local release verification **passes**; cloud staging remains
 
 This checklist is for a future reviewed rollout. The migrations below are prepared files, not applied production changes.
 
-## Before merge
+## Final PDF compliance and release gate
 
-- [ ] Confirm the Phase 2 branch and `main` diff; keep this branch separate until approval.
-- [ ] Stakeholders approve or revise the whole-bundle 24-hour expiration policy and provisional cancellation-reason list.
-- [ ] Decide whether a scheduled expiry reconciler is needed for guaranteed notifications when nobody visits a booking.
-- [ ] Name the human owner and privacy wording for public account-support follow-up; confirm whether stronger spam controls or email delivery are required.
-- [ ] Review near-event cancellation rules, emergency exceptions, and escalation path. The provisional 48-hour restriction is feature-flagged and needs policy approval.
-- [ ] Review messaging, theme, loyalty XP, and simulated installment behavior. Financial rewards remain off; the installment ledger does not alter payments or escrow.
-- [ ] Verify CI and preview deployments use a dedicated test database and cannot point migration/test commands at shared Supabase.
+The project owner has authorized the Phase 2 merge conditionally; no separate stakeholder meeting is required. Safe, reversible engineering defaults are documented in `PHASE2_DECISION_LOG.md`. Optional monetary features remain disabled.
+
+- [x] Audit all PDF requests, concerns, contradictions, and optional competitor research in `FINAL_PDF_COMPLIANCE_AUDIT.md`.
+- [x] Add a loyalty reward concept preview gated by `FEATURE_LOYALTY_MONETARY_REWARDS`; it does not change checkout, issue vouchers, or collect birthday data.
+- [x] Correct remaining customer-facing seeded bundle text to say “Service Fee.”
+- [ ] Verify exact Vercel project/repository/production branch and the Preview/Production variable scopes.
+- [ ] Verify the exact Supabase production project reference, applied schema/migration state, locks, permissions, and current data volume.
+- [ ] Create a protected full backup, validate it, restore it into isolated PostgreSQL, apply pending migrations to the restored copy, and verify Phase 1 data and rollback procedure.
+- [ ] Push only after automatic Preview deployment and database isolation are proven; observe remote CI for the exact commit.
+- [ ] Merge only the exact verified commit after all backup/restore and CI gates pass.
+- [ ] Verify the production deployment, non-destructive smoke paths, logs, database connectivity, and production flag values.
+
+Current status: local release verification is recorded in `PHASE2_PRODUCTION_RELEASE_REPORT.md`. Production identity and backup/restore are not verifiable in this environment, so migration, push, merge, and deployment remain stopped.
 
 ## Database migration order
 
@@ -36,7 +42,7 @@ This checklist is for a future reviewed rollout. The migrations below are prepar
 - [ ] Confirm migration reruns are idempotent and the append-only triggers still reject updates/deletes.
 - [ ] Confirm historical pending bookings retain a `NULL` response deadline. Do not backfill or expire them without a separate approved plan.
 - [ ] Confirm migration review-history tables contain no unintended seeded or test data.
-- [ ] Apply to production only after a separate approval and maintenance/change record. No production migration has been executed by this branch.
+- [ ] Apply to production only after the project identity, actual pending migration set, backward compatibility, protected backup, isolated restore, and rehearsal all pass. The project owner has conditionally authorized the release; no production migration has been executed by this branch.
 
 ## Environment prerequisites
 
@@ -78,12 +84,12 @@ This checklist is for a future reviewed rollout. The migrations below are prepar
 ## Deploy gate
 
 - [ ] Confirm the Vercel plan supports the configured cron cadence and set `CRON_SECRET` in the intended environment.
-- [ ] Keep `FEATURE_BOOKING_MESSAGING`, `FEATURE_PROVIDER_CANCELLATION_POLICY`, `FEATURE_LOYALTY_BETA`, and `FEATURE_SIMULATED_DEPOSITS` off until the corresponding provisional decisions are reviewed. Monetary loyalty rewards remain off.
+- [ ] Keep provisional features off in Production until database dependencies, authorization, and operating requirements are verified. Keep `FEATURE_LOYALTY_MONETARY_REWARDS` and `FEATURE_SIMULATED_DEPOSITS` off; the loyalty value is only a simulation preview and no real monetary benefit is active.
 - [ ] Approve message-report categories, handling/retention policy and customer notice before enabling messaging in a real environment.
 - [ ] Confirm deadline reminder timing and cron deployment guarantees; the visit-driven reminder is not a scheduled delivery guarantee.
 
-- [ ] Reviewer accepts the implementation report and stakeholder review decisions.
+- [x] Project owner has authorized a conditional Phase 2 merge; no separate stakeholder meeting is required.
 - [ ] PostgreSQL and browser evidence is attached to the release record.
 - [ ] Preview database isolation and migration order are verified.
 - [ ] Production data precautions, backups, monitoring, and rollback owner are confirmed.
-- [ ] Only then merge and deploy through the project’s normal release process.
+- [ ] Only after all technical gates pass, merge the exact verified commit and deploy through the existing Vercel project integration.

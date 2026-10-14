@@ -16,7 +16,7 @@ import * as m from '@/server/management';
 import { submitPublicAppeal, reviewPublicAppeal } from '@/server/public-support';
 import { cancellationReasonForBooking, reviewProviderCancellation, pendingProviderCancellationReasons, pendingEmergencyCancellationRequests, providerCancellationWindowActive } from '@/server/cancellations';
 import { readConversation, sendBookingMessage } from '@/server/messages';
-import { awardCompletedBookingExperience, dailyCheckIn, experienceSummary, manilaDateKey, monetaryLoyaltyRewardsEnabled } from '@/server/loyalty';
+import { awardCompletedBookingExperience, dailyCheckIn, experienceSummary, loyaltyRewardsPreview, manilaDateKey, monetaryLoyaltyRewardsEnabled } from '@/server/loyalty';
 import { expireDueBookings } from '@/server/bookings';
 import { validCronAuthorization } from '@/server/cron-auth';
 import { recordSimulatedInstallment, simulatedInstallments, splitCentavos } from '@/server/deposits';
@@ -767,7 +767,15 @@ test('loyalty beta awards idempotent Manila-day check-ins and referred rank mile
     await dailyCheckIn(c, nextDayMoment);
     assert.equal((await experienceSummary(c.id)).total, 10);
     await assert.rejects(() => dailyCheckIn(providerUser, firstMoment));
-    assert.equal(monetaryLoyaltyRewardsEnabled, false);
+    assert.equal(monetaryLoyaltyRewardsEnabled, process.env.FEATURE_LOYALTY_MONETARY_REWARDS === 'true');
+    assert.equal(loyaltyRewardsPreview(false), null);
+    const preview = loyaltyRewardsPreview(true)!;
+    assert.equal(preview.pointValuePhp, 0.01);
+    assert.match(preview.pointEarningRule, /earn rate and redemption rules are not configured/i);
+    assert.deepEqual(preview.tiers.map((tier) => tier.rank), ['Classic', 'Silver', 'Gold', 'Platinum']);
+    assert.ok(preview.tiers[1].benefits.includes('Birthday discount: 10%.'));
+    assert.ok(preview.tiers[2].benefits.includes('Bundle-services voucher: 10%.'));
+    assert.ok(preview.tiers[3].benefits.includes('Bundle-services voucher: 15%.'));
 
     const referrer = await freshCustomer();
     const referred = await freshCustomer(referrer.referral_code);

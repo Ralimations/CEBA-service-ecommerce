@@ -139,11 +139,22 @@ export async function ProfilePage({ user }: {
             </Link>
             {experience?.enabled && <div className="experience-panel">
               <span className="eyebrow">EXPERIENCE POINTS · BETA</span>
-              <p><strong>{experience.summary.total} XP</strong> · nonredeemable and separate from voucher value</p>
+              <p><strong className="experience-total">{experience.summary.total} XP</strong> · nonredeemable and separate from voucher value</p>
               <ActionForm action="loyalty.checkin">
                 <button className="btn secondary" type="submit">Check in today · +5 XP</button>
               </ActionForm>
               <small>One check-in per Philippine calendar day. Points cannot be withdrawn or spent.</small>
+              {experience.rewardsPreview && <div className="loyalty-reward-preview" data-testid="loyalty-reward-preview">
+                <span className="eyebrow">LOYALTY REWARDS CONCEPT · SIMULATION</span>
+                <p>{experience.rewardsPreview.pointEarningRule}</p>
+                <div className="loyalty-reward-tiers">
+                  {experience.rewardsPreview.tiers.map((tier) => <div key={tier.rank}>
+                    <strong>{tier.rank}</strong>
+                    <ul>{tier.benefits.map((benefit) => <li key={benefit}>{benefit}</li>)}</ul>
+                  </div>)}
+                </div>
+                <small>Preview only. XP remains nonredeemable; no birthday data is collected, vouchers are not issued, and checkout prices do not change.</small>
+              </div>}
             </div>}
           </Panel>)}
       </div>

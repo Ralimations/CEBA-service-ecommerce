@@ -250,7 +250,7 @@ export async function seed() {
             price: Math.round(data[i][4] * 1.5) * 100,
             inclusions: 'Signature package inclusions\nShared event planning consultation',
             exclusions: 'Out-of-town travel and overtime.',
-            terms: 'Supplier agrees to the displayed 8% bundle discount, voucher allocation, and platform fee.',
+            terms: 'Supplier agrees to the displayed 8% bundle discount, voucher allocation, and Service Fee.',
             approval: 'ACCEPTED',
             responded_at: now(),
         }))));
@@ -269,7 +269,7 @@ export async function seed() {
             package_id: `package-${i}-0-0`,
             price: data[i][4] * 100,
             inclusions: 'Essential package inclusions',
-            terms: 'Includes a 5% bundle discount before the platform fee.',
+            terms: 'Includes a 5% bundle discount before the Service Fee.',
             approval: i === 1 ? 'PENDING' : 'ACCEPTED',
         }))));
         const valid_from = new Date(Date.now() - 30 * 86400000).toISOString(), expires_at = new Date(Date.now() + 365 * 86400000).toISOString();
