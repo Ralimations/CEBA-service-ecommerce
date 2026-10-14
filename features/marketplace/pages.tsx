@@ -36,18 +36,16 @@ export async function Home({ date }: {
         </Link>
       </div>
       <main className="home-main">
-        <section className="hero">
+        <section className="hero editorial-hero">
           <div className="hero-copy">
             <span className="eyebrow">
               <span className="tiny-dot"/>
               GOOD PEOPLE. GREAT CELEBRATIONS.
             </span>
             <h1>
-              Big moments.
+              Make it a
               <br />
-              Little details.
-              <br />
-              <em>All in one place.</em>
+              <em>moment.</em>
             </h1>
             <p>
               Find the people who bring your celebration to life.

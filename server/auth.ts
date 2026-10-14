@@ -90,7 +90,7 @@ export async function login(input: unknown) {
         (await run(`INSERT INTO auth_attempts(key,attempts,reset_at) VALUES(?,1,?) ON CONFLICT(key) DO UPDATE SET attempts=CASE WHEN auth_attempts.reset_at::timestamptz<?::timestamptz THEN 1 ELSE auth_attempts.attempts+1 END, reset_at=CASE WHEN auth_attempts.reset_at::timestamptz<?::timestamptz THEN excluded.reset_at ELSE auth_attempts.reset_at END`, key, new Date(Date.now() + 900000).toISOString(), now(), now()));
         assert(false, 'Email or password is incorrect.', 401);
     }
-    assert(user.status === 'ACTIVE', 'This account is suspended. Contact support.', 403);
+    assert(user.status === 'ACTIVE', 'Your account is currently suspended. You can request a review or contact SoiréeSource support.', 403);
     (await run('DELETE FROM auth_attempts WHERE key=?', key));
     return { ...(await createSession(user.id, !!data.remember)), role: user.role };
 }

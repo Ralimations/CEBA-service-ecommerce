@@ -16,6 +16,7 @@ export default defineConfig({
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
     launchOptions: {
+      args: ['--disable-extensions'],
       executablePath:
         process.env.PLAYWRIGHT_CHROMIUM_PATH || (existsSync(localChrome) ? localChrome : undefined),
     },

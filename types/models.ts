@@ -111,6 +111,8 @@ export type Booking = {
   status: BookingStatus;
   escrow_status: string;
   created_at: string;
+  response_deadline_at: string | null;
+  expired_at: string | null;
   customer_name: string;
   customer_email: string;
   voucher_code: string | null;

@@ -24,7 +24,7 @@ export const defaults = {
   vipFeaturedDiscount: 20,
 };
 export const settingLabels: Record<keyof typeof defaults, string> = {
-  platformFee: 'Platform fee (%)',
+  platformFee: 'Service Fee (%)',
   trustedRating: 'Trusted minimum rating',
   trustedJobs: 'Trusted completed jobs',
   bestRating: 'Best Service minimum rating',

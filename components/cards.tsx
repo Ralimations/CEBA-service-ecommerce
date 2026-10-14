@@ -81,6 +81,7 @@ export function BookingCard({ booking }: { booking: Booking }) {
           <Status value={booking.status} />
         </div>
         <p>{booking.items.map((i) => i.business_name).join(' · ')}</p>
+        {booking.expired_at && <small className="muted">Expired: providers did not all accept within 24 hours. No payment was taken.</small>}
         <div className="booking-meta">
           <span>
             <CalendarDays size={14} />

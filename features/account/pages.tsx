@@ -10,9 +10,12 @@ import { ActionForm, ActionButton } from '@/components/action-form';
 import { FaqChat } from '@/components/faq-chat';
 import { money, dateLabel, human } from '@/lib/format';
 import { faqs } from '@/lib/faq';
+import { expireDueBookingsFor } from '@/server/bookings';
+import { loyaltyPreferences } from '@/server/loyalty';
 export async function CustomerOverview({ user }: {
     user: User;
 }) {
+    await expireDueBookingsFor(user);
     const stats = (await dashboardStats(user));
     const loyalty = (await customerStats(user.id));
     const bookings = (await bookingsFor(user)).filter((b) => !['COMPLETED', 'CANCELLED'].includes(b.status))
@@ -83,6 +86,7 @@ export async function ProfilePage({ user }: {
     user: User;
 }) {
     const loyalty = user.role === 'CUSTOMER' ? (await customerStats(user.id)) : null;
+    const experience = user.role === 'CUSTOMER' ? (await loyaltyPreferences(user)) : null;
     const rules = (await settings());
     const next = loyalty
         ? ([
@@ -133,6 +137,25 @@ export async function ProfilePage({ user }: {
               Explore your member vouchers
               <ArrowRight size={15}/>
             </Link>
+            {experience?.enabled && <div className="experience-panel">
+              <span className="eyebrow">EXPERIENCE POINTS · BETA</span>
+              <p><strong className="experience-total">{experience.summary.total} XP</strong> · nonredeemable and separate from voucher value</p>
+              <ActionForm action="loyalty.checkin">
+                <button className="btn secondary" type="submit">Check in today · +5 XP</button>
+              </ActionForm>
+              <small>One check-in per Philippine calendar day. Points cannot be withdrawn or spent.</small>
+              {experience.rewardsPreview && <div className="loyalty-reward-preview" data-testid="loyalty-reward-preview">
+                <span className="eyebrow">LOYALTY REWARDS CONCEPT · SIMULATION</span>
+                <p>{experience.rewardsPreview.pointEarningRule}</p>
+                <div className="loyalty-reward-tiers">
+                  {experience.rewardsPreview.tiers.map((tier) => <div key={tier.rank}>
+                    <strong>{tier.rank}</strong>
+                    <ul>{tier.benefits.map((benefit) => <li key={benefit}>{benefit}</li>)}</ul>
+                  </div>)}
+                </div>
+                <small>Preview only. XP remains nonredeemable; no birthday data is collected, vouchers are not issued, and checkout prices do not change.</small>
+              </div>}
+            </div>}
           </Panel>)}
       </div>
       {loyalty && (<>
@@ -314,6 +337,44 @@ export async function SupportPage({ user }: {
                   </Panel>))) : (<Empty title="No support requests yet.">We’re here whenever you need a hand.</Empty>)}
             </>)}
         </div>
+      </div>
+    </>);
+}
+
+export function PublicAccountAppeal() {
+    return (<>
+      <Heading eyebrow="ACCOUNT SUPPORT" title="Request an account review." description="Tell the SoiréeSource team how we can help with your account."/>
+      <div className="two-grid support-layout">
+        <Panel className="support-ticket">
+          <h2>Send a request</h2>
+          <p>Your email and message are stored for administrator review. Do not include passwords or payment details. Submitting a request does not restore access, and the form does not send an email reply.</p>
+          <ActionForm endpoint="/api/support/appeal" reset>
+            <Field label="Account email"><input name="email" type="email" autoComplete="email" maxLength={254} required/></Field>
+            <Field label="Account type">
+              <select name="accountType" defaultValue="UNSURE">
+                <option value="UNSURE">I’m not sure</option>
+                <option value="PROVIDER">Service provider</option>
+                <option value="CUSTOMER">Customer</option>
+              </select>
+            </Field>
+            <Field label="What do you need help with?">
+              <select name="category" defaultValue="SUSPENSION_REVIEW">
+                <option value="SUSPENSION_REVIEW">Request a suspension review</option>
+                <option value="ACCOUNT_HELP">Other account help</option>
+              </select>
+            </Field>
+            <Field label="Related reference number (optional)"><input name="reference" maxLength={100}/></Field>
+            <Field label="Message" hint="20 to 3,000 characters."><textarea name="message" rows={6} minLength={20} maxLength={3000} required/></Field>
+            <div className="honeypot" aria-hidden="true"><label>Website<input name="website" tabIndex={-1} autoComplete="off"/></label></div>
+            <button className="btn">Submit request</button>
+          </ActionForm>
+        </Panel>
+        <Panel>
+          <h2>What happens next?</h2>
+          <p>An administrator can review the request and record internal follow-up notes. This form never changes an account’s status automatically.</p>
+          <p>If the team needs to contact you, the administrators will use the address you provided outside this form. No support email address or email-delivery service is configured in the app.</p>
+          <Link href="/support" className="text-link">Browse help topics</Link>
+        </Panel>
       </div>
     </>);
 }

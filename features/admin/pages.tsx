@@ -1,7 +1,8 @@
 import Link from 'next/link';
+import { notFound } from 'next/navigation';
 import { ArrowRight } from 'lucide-react';
 import { all, one } from '@/server/db';
-import { providers, dashboardStats, bookingsFor, settings } from '@/server/view-data';
+import { providers, provider, dashboardStats, bookingsFor, bookingsForProviderAdmin, settings } from '@/server/view-data';
 import type { User } from '@/lib/domain';
 import { badgeEligible } from '@/lib/domain';
 import { settingLabels, defaults } from '@/config/platform';
@@ -163,13 +164,58 @@ export async function AdminProviders() {
             </div>
             <div className="button-row">
               <ActionButton action="provider.verify" data={{ id: p.id, verified: p.verified ? 0 : 1 }} label={p.verified ? 'Undo profile review' : 'Approve profile'}/>
-              <Link href={`/providers/${p.id}`} className="btn secondary small">
-                Inspect profile
+              <Link href={`/admin/providers/${p.id}`} className="btn secondary small">
+                Inspect admin record
               </Link>
             </div>
             <ActionButton action="user.status" data={{ id: p.user_id, status: p.status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE' }} label={p.status === 'ACTIVE' ? 'Suspend provider' : 'Restore provider'} confirm="Change this provider’s account access? Existing booking records will be retained."/>
           </Panel>))}
       </div>
+    </>);
+}
+export async function AdminProviderDetail({ providerId, user }: { providerId: string; user: User }) {
+    const profile = await provider(providerId);
+    if (!profile) notFound();
+    const [contact, services, allBookings] = await Promise.all([
+      one<{ name: string; email: string; phone: string }>(
+        "SELECT name,email,phone FROM users WHERE id=? AND role='PROVIDER'",
+        profile.user_id,
+      ),
+      all<{ id: string; title: string; status: string; moderated: number }>(
+        'SELECT id,title,status,moderated FROM services WHERE provider_id=? ORDER BY created_at DESC',
+        providerId,
+      ),
+      bookingsForProviderAdmin(user, providerId),
+    ]);
+    if (!contact) notFound();
+    const history = allBookings;
+    return (<>
+      <Heading eyebrow="ADMIN PROVIDER RECORD" title={profile.business_name} description="Administrative profile and retained booking history. A suspension reason is not stored in this system." action={<Link href="/admin/providers" className="btn secondary">Back to providers</Link>}/>
+      <div className="two-grid">
+        <Panel>
+          <h2>Account and profile</h2>
+          <p><strong>Account holder:</strong> {contact.name}</p>
+          <p><strong>Email:</strong> {contact.email}</p>
+          <p><strong>Account phone:</strong> {contact.phone || 'Not provided'}</p>
+          <p><strong>Business phone:</strong> {profile.phone || 'Not provided'}</p>
+          <p><strong>Category / area:</strong> {profile.category_name} · {profile.area}</p>
+          <p><strong>Account status:</strong> <Status value={profile.status}/></p>
+          <p><strong>Profile review:</strong> {profile.verified ? 'Reviewed' : 'Not reviewed'}</p>
+          <p><strong>Rating / completed:</strong> {profile.rating.toFixed(1)} · {profile.completed}</p>
+          <p><strong>Open disputes:</strong> {profile.disputes}</p>
+          <p className="pre-line">{profile.description}</p>
+        </Panel>
+        <Panel>
+          <h2>Services ({services.length})</h2>
+          {services.length ? <DataTable headings={['Service', 'Listing status', 'Moderation']}>
+            {services.map((service) => <tr key={service.id}>
+              <td>{service.title}</td><td>{human(service.status)}</td><td>{service.moderated ? 'Disabled' : 'Not moderated'}</td>
+            </tr>)}
+          </DataTable> : <Empty title="No services on record.">No listing history is available.</Empty>}
+        </Panel>
+      </div>
+      <SectionHeading title={`Booking history (${history.length})`}/>
+      {history.length ? history.map((booking) => <BookingCard key={booking.id} booking={booking}/>) : <Empty title="No bookings on record.">No booking history is available for this provider.</Empty>}
     </>);
 }
 export async function AdminServices({ q = '' }: {
@@ -307,9 +353,9 @@ export async function AdminSettings() {
         </ActionForm>
       </Panel>
       <p className="subtle-note">
-        Fees are included in the customer total and deducted from supplier allocations. Historical
-        bookings retain their agreed amounts. Welcome voucher changes can require an unpaid request
-        to be recreated.
+        The Service Fee is included in the customer total and deducted from the provider allocation;
+        it is not an extra charge added to the customer total. Historical bookings retain their
+        agreed amounts. Welcome voucher changes can require an unpaid request to be recreated.
       </p>
     </>);
 }

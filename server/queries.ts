@@ -1,6 +1,6 @@
 import { all, one, settings, type Row } from './db';
 import { recommendation } from '@/config/platform';
-import { assert, badgeEligible, rankFor, type User, type Settings } from '@/lib/domain';
+import { assert, badgeEligible, rankFor, requireRole, type User, type Settings } from '@/lib/domain';
 import type { Booking, BookingItem, Bundle, BundleItem, Provider, Service, Review, Package, } from '@/types/models';
 export async function available(providerId: string, date: string, exceptBooking = '') {
     return !(await unavailableProviders([providerId], date, exceptBooking)).has(providerId);
@@ -199,11 +199,19 @@ export async function booking(bookingId: string, user: User): Promise<Booking> {
     return b;
 }
 export async function bookingsFor(user: User): Promise<Booking[]> {
+    return await bookingsForInternal(user);
+}
+export async function bookingsForProviderAdmin(user: User, providerId: string): Promise<Booking[]> {
+    requireRole(user, 'ADMIN');
+    return await bookingsForInternal(user, providerId);
+}
+async function bookingsForInternal(user: User, providerId = ''): Promise<Booking[]> {
     const list = await all<Booking>(`SELECT b.*,u.name customer_name,u.email customer_email,v.code voucher_code
       FROM bookings b JOIN users u ON u.id=b.customer_id LEFT JOIN vouchers v ON v.id=b.voucher_id
       WHERE (?='ADMIN' OR (?='CUSTOMER' AND b.customer_id=?) OR (?='PROVIDER' AND EXISTS(
         SELECT 1 FROM booking_items i JOIN providers p ON p.id=i.provider_id WHERE i.booking_id=b.id AND p.user_id=?)))
-      ORDER BY b.created_at::timestamptz DESC`, user.role, user.role, user.id, user.role, user.id);
+        AND (?='' OR EXISTS(SELECT 1 FROM booking_items filter_item WHERE filter_item.booking_id=b.id AND filter_item.provider_id=?))
+      ORDER BY b.created_at::timestamptz DESC`, user.role, user.role, user.id, user.role, user.id, providerId, providerId);
     if (!list.length) return [];
     const rows = await all<BookingItem>(`SELECT i.*,p.business_name,p.user_id provider_user_id,p.phone provider_phone,r.id review_id
       FROM booking_items i JOIN providers p ON p.id=i.provider_id LEFT JOIN reviews r ON r.booking_item_id=i.id

@@ -6,17 +6,20 @@ A local event services marketplace for customers, providers, and administrators.
 
 ## Phase
 
-**Phase 1 Functional MVP.** This is a working application with Supabase PostgreSQL persistence, server-side authorization, and tested workflows. Payment, subscription, promotion, refund, and earnings amounts are simulations. No real money is collected or transferred.
+**Phase 2 final compliance candidate (local only).** The application includes Phase 2 booking, messaging, moderation, loyalty preview, simulated deposits, and Emerald UI work. Payment, subscription, promotion, refund, and earnings amounts remain simulations. No real money is collected or transferred. See the [PDF compliance audit](docs/FINAL_PDF_COMPLIANCE_AUDIT.md) and [production release report](docs/PHASE2_PRODUCTION_RELEASE_REPORT.md). Production migration and merge remain blocked until production identity and a backup/restore drill are verified.
 
 See [PHASE1_STATUS.md](PHASE1_STATUS.md) for the feature-by-feature status and assumptions, and [CHANGELOG_PHASE1.md](CHANGELOG_PHASE1.md) for major changes.
 
+Phase 2 implementation is in the review branch `phase2a/meeting-two-feedback`; prepared migrations are not applied to production. Run `npm run verify:release` for disposable PostgreSQL, migration, business, browser, accessibility, and enabled/disabled feature checks. See the [feature flag matrix](docs/PHASE2_FEATURE_FLAG_MATRIX.md) for defaults and rollout constraints.
+
 ## Installation
 
-Requirements: **Node.js 24 or newer** and npm. A Supabase project and server-only PostgreSQL connection string are required. Run commands from the project directory.
+Requirements: **Node.js 24 or newer** and npm. The application needs a server-only PostgreSQL connection. Run commands from the project directory.
 
 ```powershell
 npm ci
 Copy-Item .env.example .env
+# Configure POSTGRES_URL and DATABASE_TARGET before database commands.
 npm run db:migrate
 npm run db:seed
 npm run dev
@@ -53,7 +56,9 @@ Application identity, locale, default policy values, and recommendation weights 
 
 ## Database
 
-Supabase PostgreSQL is accessed through Postgres.js with a small typed, parameterized repository layer instead of an ORM. The app uses `POSTGRES_URL`, which should be a Supabase pooler connection string for Vercel. Foreign keys, status constraints, unique reservations, write transactions, and an append-only financial/event audit trail protect the core workflow.
+PostgreSQL is accessed through Postgres.js with a small typed, parameterized repository layer instead of an ORM. The app uses server-only `POSTGRES_URL`; Vercel's production runtime can use the configured Supabase pooler. Foreign keys, status constraints, unique reservations, write transactions, and an append-only financial/event audit trail protect the core workflow.
+
+Database mutations fail closed unless the target is explicit. For local development, point `POSTGRES_URL` at a loopback PostgreSQL database and set `DATABASE_TARGET=local`. For a verified staging Supabase project, use its direct `db.<project-ref>.supabase.co` host and set `DATABASE_TARGET=staging`, `STAGING_SUPABASE_PROJECT_REF`, and the distinct verified `PRODUCTION_SUPABASE_PROJECT_REF`. Generic pooler hosts cannot prove project identity and are refused by migration/seed commands. Never point local development, CI, or Preview at production.
 
 `database/schema.postgres.sql` contains the initial idempotent migration and schema version marker. `database/seed.ts` creates relative-date demo scenarios, including 10 provider businesses, 20 services, 60 packages, reviews, two bundles, vouchers, and bookings in different lifecycle states. Seed data is fictional. Seeding skips databases that already contain users; it does not merge fixtures into existing data.
 
@@ -70,7 +75,7 @@ Money is stored in integer centavos. Booking items snapshot package details, sup
 
 ### Reset and seed
 
-There is intentionally no production reset command. Run migrations and seed only against an explicitly selected development database; seeding skips databases that already contain users.
+There is intentionally no production reset command. Run migrations and seed only against an explicitly selected local or staging database; production is rejected by migration/seed commands. Seeding skips databases that already contain users.
 
 ```powershell
 npm run db:migrate
@@ -84,7 +89,7 @@ npm run db:migrate
 npm run db:seed
 ```
 
-Backups, point-in-time recovery, and database monitoring are managed in the Supabase project. The migration and seed commands are intentionally idempotent; there is no production reset command.
+Backups, point-in-time recovery, and database monitoring are managed in the Supabase project. The migration and seed commands are intentionally idempotent; there is no production reset command. Review the [RC2 runbook](docs/PHASE2_RC2_DEPLOYMENT_RUNBOOK.md) before using a hosted staging database.
 
 ## Demo accounts
 
@@ -115,18 +120,19 @@ Use separate browser profiles or an incognito window for simultaneous customer/p
 - Marketplace keyword/category/date/budget/rating/availability/trust/VIP filters, explicit sorting, individual and bundle discovery, and provider portfolios and reviews.
 - Provider onboarding checklist, editable profiles, services, packages, add-ons, publication states, and an availability calendar.
 - Date-reserving booking acceptance, rejection/cancellation, item-level progress for bundles, price breakdowns, and immutable booking timelines.
+- Persisted 24-hour response windows for new requests, whole-bundle expiry with reservation cleanup, and structured provider cancellation reasons with admin review for custom wording.
 - Mock checkout and escrow, two single-use QR/manual-code gates, confirmed admin dispute resolution, full refunds, and supplier-level earnings allocations.
 - Admin-curated bundles with supplier approval of terms and intersection of participant availability.
 - Welcome, seasonal, rank, and referral vouchers with server validation; completed-booking loyalty ranks; earned trust badges distinct from paid visibility.
 - Simulated Classic/VIP subscriptions and scoped 3/7/30-day featured placements with automatic expiry in queries.
-- Persistent notifications, visit-driven event and promotion reminders, deterministic FAQ assistance, and support tickets with administrator replies.
+- Persistent notifications, visit-driven event and promotion reminders, deterministic FAQ assistance, authenticated support tickets, and a public account-review intake with an admin-only queue.
 - Customer, provider, and admin dashboards based on saved records, responsive layouts, accessible form labels, field errors, confirmation dialogs, and empty/error states.
 
 ## Main routes
 
 | Audience             | Routes                                                                                                                                                                                                                                                                                                                                                                                        |
 | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Public               | `/`, `/browse`, `/services/:id`, `/providers/:id`, `/bundles`, `/bundles/:id`, `/login`, `/register`, `/support`                                                                                                                                                                                                                                                                              |
+| Public               | `/`, `/browse`, `/services/:id`, `/providers/:id`, `/bundles`, `/bundles/:id`, `/login`, `/register`, `/support`, `/support/appeal`                                                                                                                                                                                                                                                            |
 | Customer             | `/dashboard`, `/profile`, `/bookings`, `/bookings/:id`, `/checkout/:id`, `/vouchers`, `/notifications`                                                                                                                                                                                                                                                                                        |
 | Provider             | `/provider`, `/provider/profile`, `/provider/services`, `/provider/services/new`, `/provider/services/:id`, `/provider/packages`, `/provider/calendar`, `/provider/bookings`, `/provider/bundles`, `/provider/reviews`, `/provider/earnings`, `/provider/subscription`, `/provider/promotions`                                                                                                |
 | Administrator        | `/admin`, `/admin/users`, `/admin/providers`, `/admin/services`, `/admin/categories`, `/admin/bookings`, `/admin/bundles`, `/admin/bundles/new`, `/admin/bundles/:id`, `/admin/vouchers`, `/admin/vouchers/new`, `/admin/vouchers/:id`, `/admin/subscriptions`, `/admin/placements`, `/admin/badges`, `/admin/disputes`, `/admin/escrow`, `/admin/support`, `/admin/settings`, `/admin/audit` |
@@ -185,6 +191,7 @@ npm run lint
 npm run format:check
 npm test
 npm run build
+npm run verify:release
 ```
 
 With the application running on port 3000:
@@ -208,7 +215,8 @@ Verified during implementation: PostgreSQL migration and seed, terms acceptance 
 
 - Real payment gateways, payouts, recurring billing, email/SMS, external identity/business verification, cloud deployment, and production security/scale operations remain Phase 2.
 - No integrated camera scanner, partial refund, installment checkout, or per-provider partial escrow release. Bundles release only after every item completes, except an explicit audited admin resolution.
-- Availability is one event per provider per day. Accepted unpaid requests keep their reservation until cancelled; no automatic reservation timeout exists yet.
+- Availability is one event per provider per day. New pending requests expire after 24 hours if all participating providers do not accept; the app reconciles due requests when relevant bookings are accessed or acted on. There is no scheduled background expiry worker, and pre-existing pending requests retain no deadline.
+- Public account-support submissions can be reviewed by administrators, but the app has no email delivery. Rate limiting is per normalized email and is a lightweight spam control, not identity verification.
 - Notifications update on navigation/refresh. Event/promotion reminders are generated during authenticated visits, without a background scheduler or push service.
 - Portfolios use local assets or entered image URLs; direct file uploads and media storage are not implemented. Provider local verification is an admin review flag, not external KYC.
 - Analytics are basic database aggregates. VIP has visibility, portfolio capacity, and placement discounts; advanced VIP analytics are deferred.

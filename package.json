@@ -13,10 +13,13 @@
     "typecheck": "next typegen && tsc --noEmit",
     "lint": "eslint .",
     "test": "tsx tests/isolated.ts",
+    "verify:phase2": "tsx tests/verify-phase2.ts",
+    "verify:release": "tsx tests/verify-release.ts",
     "db:migrate": "tsx database/manage.ts migrate",
     "db:seed": "tsx database/manage.ts seed",
     "test:smoke": "tsx tests/smoke.ts",
     "test:e2e": "playwright test",
+    "test:browser-isolated": "tsx tests/browser-isolated.ts",
     "test:serve": "tsx tests/serve.ts",
     "format": "prettier --write app components config database features lib server tests types *.ts *.mjs *.json",
     "format:check": "prettier --check app components config database features lib server tests types *.ts *.mjs *.json"
@@ -31,6 +34,7 @@
     "zod": "4.6.5"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
     "@electric-sql/pglite": "0.5.8",
     "@electric-sql/pglite-socket": "0.2.11",
     "@playwright/test": "1.63.0",

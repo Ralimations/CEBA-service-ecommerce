@@ -14,6 +14,12 @@ try {
       POSTGRES_URL: 'postgres://postgres:postgres@127.0.0.1:55439/postgres',
       POSTGRES_POOL_MAX: '1',
       TEST_ISOLATED: '1',
+      FEATURE_BOOKING_MESSAGING: 'true',
+      FEATURE_PROVIDER_CANCELLATION_POLICY: 'true',
+      PROVIDER_CANCELLATION_LOCK_HOURS: '48',
+      FEATURE_LOYALTY_BETA: 'true',
+      FEATURE_LOYALTY_MONETARY_REWARDS: 'false',
+      FEATURE_SIMULATED_DEPOSITS: 'true',
       DB_PERF: '0',
     },
   });

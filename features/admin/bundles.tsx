@@ -125,7 +125,7 @@ export async function AdminBundleEditor({ bundleId }: {
                   <input name="price" type="number" step="0.01" min={0.01} required/>
                 </Field>
                 <Field label="Proposed participation terms">
-                  <textarea name="terms" rows={3} defaultValue={`Subject to ${b.discount_percent}% bundle discount, eligible vouchers, and the platform fee. Supplier may revise before accepting.`}/>
+                  <textarea name="terms" rows={3} defaultValue={`Subject to ${b.discount_percent}% bundle discount, eligible vouchers, and the service fee. Supplier may revise before accepting.`}/>
                 </Field>
                 <button className="btn">Send provider invitation</button>
               </ActionForm>

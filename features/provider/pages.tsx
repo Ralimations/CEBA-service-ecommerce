@@ -8,9 +8,11 @@ import { Heading, Metrics, Panel, SectionHeading, Field, Status, Empty, Badge, R
 import { ActionForm, ActionButton } from '@/components/action-form';
 import { BookingCard } from '@/components/cards';
 import { money, dateLabel, today } from '@/lib/format';
+import { expireDueBookingsFor } from '@/server/bookings';
 export async function ProviderOverview({ user }: {
     user: User;
 }) {
+    await expireDueBookingsFor(user);
     const p = (await providerByUser(user.id));
     const stats = (await dashboardStats(user));
     const list = (await bookingsFor(user)).filter((b) => !['COMPLETED', 'CANCELLED'].includes(b.status))
@@ -269,7 +271,7 @@ export async function ProviderBundles({ user }: {
           <p>{b.description}</p>
           <p className="notice">
             Bundle discount: {b.discount_percent}%. Your agreed price is reduced proportionally by
-            this discount, any valid customer voucher, and the configured platform fee. Changing
+            this discount, any valid customer voucher, and the configured Service Fee. Changing
             participation returns the bundle to draft for administrator review.
           </p>
           <h3>
@@ -361,7 +363,7 @@ export async function ProviderEarnings({ user }: {
             'Booking',
             'Customer',
             'Gross allocation',
-            'Platform fee',
+            'Service Fee',
             'Supplier net',
             'Escrow',
         ]}>

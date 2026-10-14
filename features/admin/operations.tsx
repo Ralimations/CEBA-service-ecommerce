@@ -9,6 +9,9 @@ import type { Voucher } from '@/types/models';
 import { Heading, Panel, DataTable, Field, Status, Empty } from '@/components/ui';
 import { ActionForm, ActionButton } from '@/components/action-form';
 import { money, dateLabel, today, human } from '@/lib/format';
+import { publicAppealsForAdmin } from '@/server/public-support';
+import { pendingEmergencyCancellationRequests, pendingProviderCancellationReasons, providerCancellationReasons } from '@/server/cancellations';
+import { bookingMessageReports } from '@/server/messages';
 export async function AdminVouchers() {
     const list = (await all<Voucher>('SELECT * FROM vouchers ORDER BY id DESC'));
     return (<>
@@ -309,7 +312,7 @@ export async function AdminEscrow({ user }: {
               </td>
               <td>
                 {money(b.total)}
-                <small>{money(b.platform_fee)} platform fee</small>
+                <small>{money(b.platform_fee)} Service Fee</small>
               </td>
               <td>
                 <Status value={b.escrow_status}/>
@@ -355,7 +358,10 @@ export async function AdminEscrow({ user }: {
       </Panel>
     </>);
 }
-export async function AdminSupport() {
+export async function AdminSupport({ user }: { user: User }) {
+    const appeals = await publicAppealsForAdmin(user);
+    const cancellations = await pendingProviderCancellationReasons(user);
+    const emergencyRequests = await pendingEmergencyCancellationRequests(user);
     const list = (await all<{
         id: string;
         subject: string;
@@ -369,6 +375,48 @@ export async function AdminSupport() {
     }>('SELECT t.*,u.name,u.email FROM support_tickets t JOIN users u ON u.id=t.user_id ORDER BY t.created_at DESC'));
     return (<>
       <Heading title="A person on the other side." description="Reply to questions the FAQ assistant could not solve."/>
+      <Heading eyebrow="PUBLIC ACCOUNT SUPPORT" title="Account review requests" description="Anonymous account-support intake. Review notes are internal and are not emailed."/>
+      {appeals.map((appeal) => (<Panel key={appeal.id}>
+          <div className="row between"><h2>{appeal.category === 'SUSPENSION_REVIEW' ? 'Suspension review' : 'Account help'}</h2><Status value={appeal.status}/></div>
+          <small>{appeal.submitted_email} · {human(appeal.account_type)} · {dateLabel(appeal.created_at)}</small>
+          {appeal.reference_number && <p><strong>Reference:</strong> {appeal.reference_number}</p>}
+          <p className="pre-line">{appeal.message}</p>
+          <p><strong>Follow-up needed:</strong> {appeal.follow_up_required ? 'Yes' : 'No'}</p>
+          <ActionForm action="appeal.review" data={{ id: appeal.id }}>
+            <Field label="Review status"><select name="status" defaultValue={appeal.status}>{['OPEN','IN_REVIEW','RESOLVED'].map((status) => <option key={status}>{status}</option>)}</select></Field>
+            <Field label="Internal follow-up notes" hint="These notes are not sent to the submitter."><textarea name="internalNotes" rows={3} maxLength={3000} defaultValue={appeal.internal_notes}/></Field>
+            <label className="check-label"><input type="checkbox" name="followUpRequired" defaultChecked={appeal.follow_up_required}/><span>Further follow-up is required</span></label>
+            <button className="btn">Save review</button>
+          </ActionForm>
+        </Panel>))}
+      {!appeals.length && <Empty title="No account-review requests yet.">Public account-support requests will appear here.</Empty>}
+      <Heading eyebrow="URGENT CANCELLATION REVIEW" title="Provider requests within the event window" description="The provisional restricted window is measured against the event calendar date in Philippine time. No money is charged or refunded."/>
+      {emergencyRequests.map((request) => <Panel key={request.id}>
+        <div className="row between"><h2>{request.title}</h2><Status value="IN_REVIEW"/></div>
+        <small>{request.requester_name} · {dateLabel(request.event_date)} · {providerCancellationReasons[request.reason_code]}</small>
+        {request.submitted_text && <p className="pre-line">{request.submitted_text}</p>}
+        <Link href={`/bookings/${request.booking_id}`} className="text-link">Open booking details</Link>
+        <ActionForm action="cancellation-request.review" data={{ id: request.id }}>
+          <Field label="Request decision"><select name="decision" defaultValue=""><option value="" disabled>Choose an outcome</option><option value="APPROVED">Approve cancellation request</option><option value="REJECTED">Keep booking active</option></select></Field>
+          <Field label="Review note"><textarea name="note" maxLength={2000} rows={3}/></Field>
+          <button className="btn">Record review decision</button>
+        </ActionForm>
+      </Panel>)}
+      {!emergencyRequests.length && <Empty title="No urgent cancellation requests.">Requests inside the provisional event window will appear here.</Empty>}
+      <Heading eyebrow="PROVIDER CANCELLATIONS" title="Review custom explanations" description="Unreviewed Other text is visible to administrators only. The original submission is retained after a decision."/>
+      {cancellations.map((reason) => <Panel key={reason.id}>
+        <div className="row between"><h2>{reason.title}</h2><Status value="IN_REVIEW"/></div>
+        <small>{reason.requester_name} · {dateLabel(reason.event_date)}</small>
+        <p className="pre-line">{reason.submitted_text}</p>
+        <Link href={`/bookings/${reason.booking_id}`} className="text-link">Open booking details</Link>
+        <ActionForm action="cancellation.review" data={{ id: reason.id }}>
+          <Field label="Moderation decision"><select name="decision" defaultValue="APPROVED"><option value="APPROVED">Approve for customer visibility</option><option value="REJECTED">Reject custom wording</option></select></Field>
+          <Field label="Approved customer explanation" hint="Used only when approving. The original wording remains preserved."><textarea name="customerVisibleReason" minLength={5} maxLength={500} rows={3}/></Field>
+          <Field label="Internal moderation note"><textarea name="moderationNote" maxLength={2000} rows={2}/></Field>
+          <button className="btn">Record moderation decision</button>
+        </ActionForm>
+      </Panel>)}
+      {!cancellations.length && <Empty title="No custom cancellation explanations need review.">Other explanations will wait here until an administrator reviews them.</Empty>}
       {list.map((t) => (<Panel key={t.id}>
           <div className="row between">
             <h2>{t.subject}</h2>
@@ -394,5 +442,28 @@ export async function AdminSupport() {
           </ActionForm>
         </Panel>))}
       {!list.length && <Empty title="All caught up.">No support tickets yet.</Empty>}
+    </>);
+}
+
+export async function AdminMessageReports({ user }: { user: User }) {
+    const reports = await bookingMessageReports(user);
+    return (<>
+      <Heading eyebrow="TRUST & SAFETY" title="Message reports" description="Review only the reported message and its booking context. Full conversation histories are not shown here."/>
+      {reports.map((report) => <Panel key={report.id}>
+        <div className="row between">
+          <div><h2>{human(report.category)} report</h2><small>Reported by {report.reporter_name} · sent by {report.sender_name} · {dateLabel(report.created_at)}</small></div>
+          <Status value={report.status}/>
+        </div>
+        <blockquote className="reported-message">{report.message_body}</blockquote>
+        {report.details && <p className="pre-line"><strong>Report details:</strong> {report.details}</p>}
+        <p><strong>Provider:</strong> {report.provider_name} · <strong>Booking:</strong> {report.booking_title}</p>
+        <Link href={`/bookings/${report.booking_id}`} className="text-link">Open booking context</Link>
+        {report.status === 'OPEN' ? <ActionForm action="message-report.review" data={{ id: report.id }}>
+          <Field label="Review outcome"><select name="status" defaultValue="REVIEWED"><option value="REVIEWED">Reviewed; no further action</option><option value="RESOLVED">Resolved; follow-up completed</option></select></Field>
+          <Field label="Internal review note" hint="Visible to administrators only."><textarea name="internalNote" maxLength={2000} rows={3}/></Field>
+          <button className="btn">Save report review</button>
+        </ActionForm> : report.internal_note && <p className="pre-line"><strong>Internal note:</strong> {report.internal_note}</p>}
+      </Panel>)}
+      {!reports.length && <Empty title="No message reports." >Reports submitted by booking participants will appear here.</Empty>}
     </>);
 }
