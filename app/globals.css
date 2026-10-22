@@ -5525,3 +5525,14 @@ label[for],
   .category-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .dashboard-main { padding-inline: 12px; }
 }
+
+/* Keep navigation hover and keyboard-focus shapes soft and easy to see. */
+.top-nav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  transition: color .18s ease, background-color .18s ease;
+}
+.top-nav a:hover:not(.active) { background: var(--surface-hover); }
