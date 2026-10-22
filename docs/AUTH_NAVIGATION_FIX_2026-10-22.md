@@ -36,4 +36,4 @@ Evidence: `artifacts/live-auth/result.json`, `artifacts/auth-navigation/result.j
 
 ## Release status
 
-**Implemented and verified locally; not deployed.** Grant the connected Vercel account access to the existing `ralimations-projects` team before inspecting the current deployment and releasing this patch. Recheck the deployed SHA, landing → login, landing → signup, and provider category retry on the actual production URL after release. Until then, opening `/login` or `/register` directly is the confirmed practical workaround for the affected client-navigation path.
+**Live on production.** Commit `d601451` was pushed to `main`; GitHub reports the Vercel check succeeded. The public `/login` page returned HTTP 200, and its served stylesheet contains the new responsive header, padded auth card, and narrow-screen header rules. Vercel deployment details and logs remain inaccessible to this connection, so the live check confirms the served UI assets but does not replace continued browser QA of signup and provider category retry.
