@@ -167,8 +167,8 @@ export async function AdminProviders() {
               <Link href={`/admin/providers/${p.id}`} className="btn secondary small">
                 Inspect admin record
               </Link>
+              <ActionButton action="user.status" data={{ id: p.user_id, status: p.status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE' }} label={p.status === 'ACTIVE' ? 'Suspend provider' : 'Restore provider'} confirm="Change this provider’s account access? Existing booking records will be retained."/>
             </div>
-            <ActionButton action="user.status" data={{ id: p.user_id, status: p.status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE' }} label={p.status === 'ACTIVE' ? 'Suspend provider' : 'Restore provider'} confirm="Change this provider’s account access? Existing booking records will be retained."/>
           </Panel>))}
       </div>
     </>);
@@ -327,10 +327,14 @@ export async function AdminBadges() {
                 const eligible = badgeEligible(p.rating, p.completed, p.disputes, b, rules);
                 const held = b === 'TRUSTED' ? p.trusted : p.best;
                 return (<td key={b}>
-                    <Badge tone={held ? 'green' : 'neutral'}>
-                      {held ? 'Awarded' : eligible ? 'Eligible' : 'Not yet eligible'}
-                    </Badge>
-                    <ActionButton action="badge.save" data={{ providerId: p.id, badge: b, granted: held ? 0 : 1 }} label={held ? 'Revoke' : 'Grant'}/>
+                    <div className="badge-action">
+                      <span className="badge-action-status">
+                        <Badge tone={held ? 'green' : 'neutral'}>
+                          {held ? 'Awarded' : eligible ? 'Eligible' : 'Not yet eligible'}
+                        </Badge>
+                      </span>
+                      <ActionButton action="badge.save" data={{ providerId: p.id, badge: b, granted: held ? 0 : 1 }} label={held ? 'Revoke' : 'Grant'}/>
+                    </div>
                   </td>);
             })}
             </tr>))}

@@ -52,7 +52,11 @@ export function ActionForm({
         onResult?.(result);
         if (reset) form.current?.reset();
         if (result.redirect) {
-          router.push(result.redirect);
+          if (endpoint === '/api/auth/logout') {
+            window.location.assign(result.redirect);
+          } else {
+            router.push(result.redirect);
+          }
         } else {
           router.refresh();
         }

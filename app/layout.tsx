@@ -6,9 +6,9 @@ import { AuthLink } from '@/components/auth-link';
 import { ArrowUpRight } from 'lucide-react';
 import { platform } from '@/config/platform';
 import { currentUser } from '@/server/auth';
-import { one } from '@/server/db';
+import { all } from '@/server/db';
 import { deliverReminders } from '@/server/reminders';
-import { Header, HeaderPlaceholder } from '@/components/navigation';
+import { Header, HeaderPlaceholder, type HeaderNotification } from '@/components/navigation';
 import { FaqChat } from '@/components/faq-chat';
 import './globals.css';
 export const metadata: Metadata = {
@@ -20,12 +20,13 @@ async function SessionHeader() {
     const user = await currentUser();
     if (user)
         (await deliverReminders(user));
-    const unread = user
-        ? (await one<{
-            n: number;
-        }>('SELECT COUNT(*)::int n FROM notifications WHERE user_id=? AND read_at IS NULL', user.id))!.n
-        : 0;
-    return <Header user={user} unread={unread}/>;
+    const notifications = user
+        ? (await all<HeaderNotification & { unread_count: number }>(`SELECT id,title,body,href,read_at,created_at,
+            COUNT(*) FILTER (WHERE read_at IS NULL) OVER()::int unread_count
+          FROM notifications WHERE user_id=? ORDER BY created_at DESC LIMIT 5`, user.id))
+        : [];
+    const unread = notifications[0]?.unread_count ?? 0;
+    return <Header user={user} unread={unread} notifications={notifications}/>;
 }
 export default function RootLayout({ children }: { children: React.ReactNode }) {
     return (<html lang="en" data-scroll-behavior="smooth" suppressHydrationWarning>
@@ -41,35 +42,37 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </Suspense>
         <div id="main-content">{children}</div>
         <footer className="site-footer">
-          <div>
-            <Link className="brand" href="/">
-              <span className="brand-mark">
-                <img src="/soiree-source-logo.webp" alt="SoiréeSource logo" className="brand-image" width={320} height={336} />
-              </span>
-              <span>{platform.name}</span>
-            </Link>
-            <p>
-              Good people. Great celebrations.
-              <br />
-              All the little details, in one place.
-            </p>
-          </div>
-          <nav aria-label="Footer">
-            <Link href="/browse">Explore services</Link>
-            <Link href="/bundles">Curated bundles</Link>
-            <AuthLink href="/register?role=PROVIDER">
-              Become a provider
-              <ArrowUpRight size={13}/>
-            </AuthLink>
-            <Link href="/support">Help & support</Link>
-          </nav>
-          <div className="footer-note">
-            <span>Made for moments worth celebrating.</span>
-            <small>
-              Phase 1 local demo · Fictional businesses and reviews.
-              <br />
-              All payments are simulated. No real money is transferred.
-            </small>
+          <div className="site-footer-inner">
+            <div>
+              <Link className="brand" href="/">
+                <span className="brand-mark">
+                  <img src="/soiree-source-logo.webp" alt="SoiréeSource logo" className="brand-image" width={320} height={336} />
+                </span>
+                <span>{platform.name}</span>
+              </Link>
+              <p>
+                Good people. Great celebrations.
+                <br />
+                All the little details, in one place.
+              </p>
+            </div>
+            <nav aria-label="Footer">
+              <Link href="/browse">Explore services</Link>
+              <Link href="/bundles">Curated bundles</Link>
+              <AuthLink href="/register?role=PROVIDER">
+                Become a provider
+                <ArrowUpRight size={13}/>
+              </AuthLink>
+              <Link href="/support">Help & support</Link>
+            </nav>
+            <div className="footer-note">
+              <span>Made for moments worth celebrating.</span>
+              <small>
+                Phase 1 local demo · Fictional businesses and reviews.
+                <br />
+                All payments are simulated. No real money is transferred.
+              </small>
+            </div>
           </div>
         </footer>
         <FaqChat floating/>

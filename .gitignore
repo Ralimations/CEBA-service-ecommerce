@@ -13,3 +13,10 @@ artifacts/
 
 .vercel
 .env*
+
+# Generated framework and tooling caches
+.next-local-demo/
+.turbo/
+.cache/
+coverage/
+playwright/.cache/

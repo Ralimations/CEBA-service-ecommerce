@@ -250,7 +250,7 @@ export async function Notifications({ user }: {
     return (<>
       <Heading eyebrow="IN THE KNOW" title="Your updates" description="The little things that keep your plans moving." action={<ActionButton action="notifications.read" label="Mark all as read"/>}/>
       {list.length ? (<div className="notification-list">
-          {list.map((n) => (<article className={`notification-item ${n.read_at ? '' : 'unread'}`} key={n.id}>
+          {list.map((n) => (<article id={`notification-${n.id}`} tabIndex={-1} className={`notification-item ${n.read_at ? '' : 'unread'}`} key={n.id}>
               <span className="notification-icon">
                 {n.read_at ? <CheckCircle2 size={20}/> : <Bell size={20}/>}
               </span>

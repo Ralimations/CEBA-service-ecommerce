@@ -281,7 +281,7 @@ export async function AdminDisputes() {
               <strong>Resolution</strong>
               <p>{d.resolution}</p>
             </div>)}
-          <div className="button-row">
+          <div className="button-row dispute-actions">
             {d.status === 'OPEN' && (<ActionButton action="dispute.review" data={{ id: d.id }} label="Mark under review"/>)}
             <Link href={`/bookings/${d.booking_id}`} className="btn secondary">
               Inspect booking & escrow
@@ -318,10 +318,14 @@ export async function AdminEscrow({ user }: {
                 <Status value={b.escrow_status}/>
               </td>
               <td>
-                {b.items.map((i) => (<div key={i.id}>
-                    <small>{i.business_name}</small>
-                    <Status value={i.status}/>
-                  </div>))}
+                <div className="service-progress-list">
+                  {b.items.map((i) => (
+                    <div className="service-progress-item" key={i.id}>
+                      <small>{i.business_name}</small>
+                      <Status value={i.status}/>
+                    </div>
+                  ))}
+                </div>
               </td>
               <td>
                 <Link className="btn small secondary" href={`/bookings/${b.id}`}>

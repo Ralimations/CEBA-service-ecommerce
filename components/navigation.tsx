@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { AuthLink } from './auth-link';
 import { usePathname } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Menu,
   X,
@@ -28,19 +28,60 @@ import {
   MessageSquareWarning,
 } from 'lucide-react';
 import { platform } from '@/config/platform';
+import { dateLabel } from '@/lib/format';
 import { ActionForm } from './action-form';
 import type { User } from '@/lib/domain';
 const dashboardFor = (role: string) =>
   role === 'ADMIN' ? '/admin' : role === 'PROVIDER' ? '/provider' : '/dashboard';
-export function Header(props: { user: User | null; unread: number }) {
+export type HeaderNotification = {
+  id: string;
+  title: string;
+  body: string;
+  href: string;
+  read_at: string | null;
+  created_at: string;
+};
+export function Header(props: {
+  user: User | null;
+  unread: number;
+  notifications: HeaderNotification[];
+}) {
   const path = usePathname();
   return <HeaderView {...props} path={path}/>;
 }
 export function HeaderPlaceholder() {
-  return <HeaderView user={null} unread={0} pending path=""/>;
+  return <HeaderView user={null} unread={0} notifications={[]} pending path=""/>;
 }
-function HeaderView({ user, unread, pending = false, path }: { user: User | null; unread: number; pending?: boolean; path: string }) {
+function HeaderView({ user, unread, notifications, pending = false, path }: {
+  user: User | null;
+  unread: number;
+  notifications: HeaderNotification[];
+  pending?: boolean;
+  path: string;
+}) {
   const [open, setOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const notificationsRef = useRef<HTMLDivElement>(null);
+  const notificationButtonRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!notificationsOpen) return;
+    const closeOnOutsidePointer = (event: PointerEvent) => {
+      if (event.target instanceof Node && !notificationsRef.current?.contains(event.target))
+        setNotificationsOpen(false);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setNotificationsOpen(false);
+        notificationButtonRef.current?.focus();
+      }
+    };
+    document.addEventListener('pointerdown', closeOnOutsidePointer);
+    document.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.removeEventListener('pointerdown', closeOnOutsidePointer);
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [notificationsOpen]);
   function toggleTheme() {
     const current = localStorage.getItem('soiree-source-theme') || 'system';
     const next = current === 'system' ? 'light' : current === 'light' ? 'dark' : 'system';
@@ -87,14 +128,71 @@ function HeaderView({ user, unread, pending = false, path }: { user: User | null
           </button>
           {pending ? <span className="muted" role="status">Loading account…</span> : user ? (
             <>
-              <Link
-                href="/notifications"
-                className="icon-button notification-bell"
-                aria-label={`Notifications, ${unread} unread`}
+              <div
+                className="notification-menu"
+                ref={notificationsRef}
+                onBlur={(event) => {
+                  const nextTarget = event.relatedTarget;
+                  if (!(nextTarget instanceof Node) || !event.currentTarget.contains(nextTarget))
+                    setNotificationsOpen(false);
+                }}
               >
-                <Bell size={19} />
-                {unread > 0 && <span>{unread > 9 ? '9+' : unread}</span>}
-              </Link>
+                <button
+                  ref={notificationButtonRef}
+                  className="icon-button notification-bell"
+                  type="button"
+                  aria-label={`Notifications, ${unread} unread`}
+                  aria-haspopup="dialog"
+                  aria-expanded={notificationsOpen}
+                  aria-controls="notification-popover"
+                  onClick={() => setNotificationsOpen((value) => !value)}
+                >
+                  <Bell size={19} />
+                  {unread > 0 && <span>{unread > 9 ? '9+' : unread}</span>}
+                </button>
+                <div
+                  className="notification-popover"
+                  id="notification-popover"
+                  role="dialog"
+                  aria-label="Recent notifications"
+                  hidden={!notificationsOpen}
+                >
+                  <div className="notification-popover-header">
+                    <strong>Notifications</strong>
+                    {unread > 0 && <span>{unread > 99 ? '99+' : unread} unread</span>}
+                  </div>
+                  {notifications.length ? (
+                    <div className="notification-preview-list">
+                      {notifications.map((notification) => (
+                        <Link
+                          key={notification.id}
+                          href={`/notifications#notification-${notification.id}`}
+                          className={`notification-preview ${notification.read_at ? '' : 'unread'}`}
+                          onClick={() => setNotificationsOpen(false)}
+                        >
+                          <span className="notification-preview-dot" aria-hidden="true" />
+                          <span className="notification-preview-content">
+                            <strong>{notification.title}</strong>
+                            <span>{notification.body}</span>
+                            <time dateTime={notification.created_at}>
+                              {dateLabel(notification.created_at)}
+                            </time>
+                          </span>
+                        </Link>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="notification-empty">You’re all caught up.</p>
+                  )}
+                  <Link
+                    className="notification-view-all"
+                    href="/notifications"
+                    onClick={() => setNotificationsOpen(false)}
+                  >
+                    View all notifications
+                  </Link>
+                </div>
+              </div>
               <Link className="account-link" href={dashboardFor(user.role)}>
                 <span className="avatar small">{user.name.slice(0, 1)}</span>
                 <span>

@@ -77,10 +77,7 @@ export function BookingCard({ booking }: { booking: Booking }) {
         <CalendarDays size={23} />
       </div>
       <div className="booking-main">
-        <div className="row between">
-          <h3>{booking.title}</h3>
-          <Status value={booking.status} />
-        </div>
+        <h3>{booking.title}</h3>
         <p>{booking.items.map((i) => i.business_name).join(' · ')}</p>
         {booking.expired_at && <small className="muted">Expired: providers did not all accept within 24 hours. No payment was taken.</small>}
         <div className="booking-meta">
@@ -93,6 +90,9 @@ export function BookingCard({ booking }: { booking: Booking }) {
             {booking.location}
           </span>
         </div>
+      </div>
+      <div className="booking-status">
+        <Status value={booking.status} />
       </div>
       <div className="booking-price">
         <strong>{money(booking.total)}</strong>
