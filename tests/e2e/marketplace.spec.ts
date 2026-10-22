@@ -719,7 +719,8 @@ test('feature flags respect enabled and disabled server configuration @release-f
 });
 
 test('axe WCAG 2.2 AA audit across major routes and themes', async ({ browser }) => {
-  test.setTimeout(300_000);
+  // 78 route/theme combinations plus responsive checks can exceed five minutes on Windows.
+  test.setTimeout(600_000);
   const publicRoutes = [
     '/', '/browse', '/services/service-0-0', '/providers/provider-0', '/bundles',
     '/login', '/register', '/support',

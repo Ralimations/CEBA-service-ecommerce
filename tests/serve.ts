@@ -4,7 +4,7 @@ import { seed } from '@/database/seed';
 const configured = process.env.POSTGRES_URL;
 const parsed = configured ? new URL(configured) : null;
 const pglite = process.env.TEST_ISOLATED === '1' && parsed?.hostname === '127.0.0.1' &&
-  parsed.port === '55441' && parsed.pathname === '/postgres';
+  parsed.port === '15441' && parsed.pathname === '/postgres';
 const realPostgres = !!configured && process.env.TEST_DATABASE_URL === configured &&
   ['127.0.0.1', 'localhost'].includes(parsed?.hostname || '') &&
   parsed?.username === 'phase2_test' && parsed.pathname === '/soiree_phase2_test';

@@ -1,5 +1,6 @@
 'use client';
 import Link from 'next/link';
+import { AuthLink } from './auth-link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 import {
@@ -104,13 +105,13 @@ function HeaderView({ user, unread, pending = false, path }: { user: User | null
             </>
           ) : (
             <>
-              <Link className="login-link" href="/login">
+              <AuthLink className="login-link" href="/login">
                 Log in
-              </Link>
-              <Link href="/register" className="btn small">
+              </AuthLink>
+              <AuthLink href="/register" className="btn small">
                 Get started
                 <ArrowUpRight size={15} />
-              </Link>
+              </AuthLink>
             </>
           )}
           <button

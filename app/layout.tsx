@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import Script from 'next/script';
 import Link from 'next/link';
+import { AuthLink } from '@/components/auth-link';
 import { ArrowUpRight } from 'lucide-react';
 import { platform } from '@/config/platform';
 import { currentUser } from '@/server/auth';
@@ -56,10 +57,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <nav aria-label="Footer">
             <Link href="/browse">Explore services</Link>
             <Link href="/bundles">Curated bundles</Link>
-            <Link href="/register?role=PROVIDER">
+            <AuthLink href="/register?role=PROVIDER">
               Become a provider
               <ArrowUpRight size={13}/>
-            </Link>
+            </AuthLink>
             <Link href="/support">Help & support</Link>
           </nav>
           <div className="footer-note">

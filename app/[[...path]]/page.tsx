@@ -2,7 +2,6 @@ import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
 import { Sparkles } from 'lucide-react';
 import { currentUser, requireUser, homeFor } from '@/server/auth';
-import { activeCategories } from '@/server/public-data';
 import { Suspense } from 'react';
 import { Sidebar } from '@/components/navigation';
 import { AuthForm } from '@/components/auth-form';
@@ -78,7 +77,7 @@ async function RouteContent({ params, searchParams }: Props) {
                 ? 'Join a community that brings celebrations to life.'
                 : 'Sign in and pick up where your plans left off.'}
           </p>
-          <AuthForm register={root === 'register'} categories={(await activeCategories())} initialRole={search.role === 'PROVIDER' ? 'PROVIDER' : 'CUSTOMER'}/>
+          <AuthForm register={root === 'register'} initialRole={search.role === 'PROVIDER' ? 'PROVIDER' : 'CUSTOMER'}/>
         </div>
       </main>);
     }

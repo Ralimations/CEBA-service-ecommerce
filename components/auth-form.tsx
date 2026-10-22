@@ -1,6 +1,7 @@
 'use client';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { AuthLink } from './auth-link';
 import { ArrowRight, Camera, Heart } from 'lucide-react';
 import { ActionForm } from './action-form';
 import { Field } from './ui';
@@ -16,6 +17,31 @@ export function AuthForm({
   const [role, setRole] = useState(initialRole);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [categoryOptions, setCategoryOptions] = useState(categories);
+  const [categoryError, setCategoryError] = useState('');
+  const [categoryAttempt, setCategoryAttempt] = useState(0);
+  const needsCategories = register && role === 'PROVIDER' && categoryOptions.length === 0;
+  useEffect(() => {
+    if (!needsCategories) return;
+    const controller = new AbortController();
+    let active = true;
+    const timeout = setTimeout(() => controller.abort(), 8000);
+    fetch('/api/auth/categories', { signal: controller.signal })
+      .then(async response => {
+        if (!response.ok) throw new Error('Categories unavailable');
+        const data = await response.json();
+        if (!Array.isArray(data.categories) || data.categories.length === 0 ||
+            !data.categories.every((item: { id?: unknown; name?: unknown }) =>
+              item && typeof item.id === 'string' && typeof item.name === 'string'))
+          throw new Error('Categories unavailable');
+        if (active) setCategoryOptions(data.categories);
+      })
+      .catch(() => {
+        if (active) setCategoryError('Service categories could not load. Please try again.');
+      })
+      .finally(() => clearTimeout(timeout));
+    return () => { active = false; clearTimeout(timeout); controller.abort(); };
+  }, [needsCategories, categoryAttempt]);
   return (
     <>
       <ActionForm endpoint={`/api/auth/${register ? 'register' : 'login'}`} className="auth-form">
@@ -94,13 +120,21 @@ export function AuthForm({
                   <input name="businessName" required minLength={2} />
                 </Field>
                 <Field label="Primary service">
-                  <select name="categoryId" required>
-                    {categories.map((c) => (
+                  <select name="categoryId" required disabled={needsCategories}>
+                    {needsCategories && <option value="">{categoryError ? 'Categories unavailable' : 'Loading service categories…'}</option>}
+                    {categoryOptions.map((c) => (
                       <option key={c.id} value={c.id}>
                         {c.name}
                       </option>
                     ))}
                   </select>
+                  {needsCategories && (categoryError ? <div>
+                    <p role="alert">{categoryError}</p>
+                    <button type="button" className="btn small secondary" onClick={() => {
+                      setCategoryError('');
+                      setCategoryAttempt(value => value + 1);
+                    }}>Retry categories</button>
+                  </div> : <p role="status">Loading service categories…</p>)}
                 </Field>
                 <Field label="Tell us about your business">
                   <textarea name="description" required minLength={10} rows={3} />
@@ -125,16 +159,16 @@ export function AuthForm({
             Remember me for 30 days
           </label>
         )}
-        <button type="submit" className="btn full">
+        <button type="submit" className="btn full" disabled={needsCategories}>
           {register ? 'Create your account' : 'Welcome back'}
           <ArrowRight size={17} />
         </button>
       </ActionForm>
       <p className="auth-switch">
         {register ? 'Already part of the celebration?' : 'New around here?'}{' '}
-        <Link href={register ? '/login' : '/register'}>
+        <AuthLink href={register ? '/login' : '/register'}>
           {register ? 'Log in' : 'Create an account'}
-        </Link>
+        </AuthLink>
       </p>
       {!register && (
         <p className="auth-switch">

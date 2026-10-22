@@ -8,13 +8,13 @@ const database = await PGlite.create();
 const server = new PGLiteSocketServer({
   db: database,
   host: '127.0.0.1',
-  port: 55441,
+  port: 15441,
   maxConnections: 1,
 });
 await server.start();
 const env = {
   ...process.env,
-  POSTGRES_URL: 'postgres://postgres:postgres@127.0.0.1:55441/postgres',
+  POSTGRES_URL: 'postgres://postgres:postgres@127.0.0.1:15441/postgres',
   POSTGRES_POOL_MAX: '1',
   APP_ORIGIN: 'http://127.0.0.1:3100',
   TEST_ISOLATED: '1',

@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { AuthLink } from '@/components/auth-link';
 import { notFound } from 'next/navigation';
 import { ArrowRight, ArrowUpRight, Search, CalendarDays, MapPin, ShieldCheck, Sparkles, Camera, Utensils, Mic, Flower2, Brush, Wine, Music2, Heart, Building2, Check, Layers, SlidersHorizontal, } from 'lucide-react';
 import { available, filterServices, type Search as Filters } from '@/server/queries';
@@ -215,10 +216,10 @@ export async function Home({ date }: {
               We’ll help bring the celebrations.
             </h2>
           </div>
-          <Link href="/register?role=PROVIDER" className="btn">
+          <AuthLink href="/register?role=PROVIDER" className="btn">
             Join as a provider
             <ArrowUpRight size={18}/>
-          </Link>
+          </AuthLink>
         </section>
       </main>
     </>);
