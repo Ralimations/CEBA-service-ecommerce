@@ -14,7 +14,7 @@ import './globals.css';
 export const metadata: Metadata = {
     title: { default: `${platform.name} · Make it a moment`, template: `%s · ${platform.name}` },
     description: 'Find thoughtful event services, trusted providers, and curated celebration bundles with SoiréeSource.',
-    icons: { icon: '/soiree-source-logo.png' },
+    icons: { icon: '/soiree-source-logo.webp' },
 };
 async function SessionHeader() {
     const user = await currentUser();
@@ -44,7 +44,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <div>
             <Link className="brand" href="/">
               <span className="brand-mark">
-                <img src="/soiree-source-logo.png" alt="SoiréeSource logo" className="brand-image" />
+                <img src="/soiree-source-logo.webp" alt="SoiréeSource logo" className="brand-image" width={320} height={336} />
               </span>
               <span>{platform.name}</span>
             </Link>

@@ -1,8 +1,8 @@
 import { mapAsync, forEachAsync, everyAsync } from '@/lib/async';
 import { randomBytes } from 'node:crypto';
 import { z } from 'zod';
-import { one, all, run, insert, transaction, id, now, notify, admins, settings, audit } from './db';
-import { available, booking, bookingItems, bundles, packagesFor, service } from './queries';
+import { one, all, run, insert, transaction, id, now, notify, notifyMany, admins, settings, audit } from './db';
+import { available, booking, bookingItems, bundles, service } from './queries';
 import { validateVoucher, rewardReferral } from './vouchers';
 import { assert, requireRole, checkTransition, type User, type BookingStatus } from '@/lib/domain';
 import { today } from '@/lib/format';
@@ -24,7 +24,7 @@ const createSchema = z.object({
     contact: z.string().trim().min(5).max(200),
     requests: z.string().max(3000).default(''),
     voucher: z.string().max(50).default(''),
-    addons: z.array(z.string()).default([]),
+    addons: z.array(z.string().max(128)).max(20).default([]),
 });
 export async function event(bookingId: string, actorId: string | null, label: string, detail = '') {
     (await insert('booking_events', {
@@ -54,8 +54,7 @@ async function expireLockedBooking(bookingId: string, at: Date) {
     const explanation = 'Not all participating providers accepted within 24 hours. Accepted date reservations were released. No payment was taken.';
     await event(bookingId, null, 'Booking request expired', explanation);
     const recipients = new Set([state.customer_id, ...items.map((item) => item.provider_user_id)]);
-    for (const recipient of recipients)
-        await notify(recipient, 'Booking request expired', explanation, `/bookings/${bookingId}`);
+    await notifyMany(recipients, 'Booking request expired', explanation, `/bookings/${bookingId}`);
     return true;
 }
 
@@ -98,8 +97,7 @@ export async function expireDueBookings(at = new Date(), limit = 100) {
 }
 export async function notifyBooking(b: Booking, title: string, body: string) {
     const recipients = new Set([b.customer_id, ...b.items.map((i) => i.provider_user_id)]);
-    for (const recipient of recipients)
-        (await notify(recipient, title, body, `/bookings/${b.id}`));
+    await notifyMany(recipients, title, body, `/bookings/${b.id}`);
 }
 async function transition(b: Booking, next: BookingStatus, actor: string, label: string, detail = '') {
     checkTransition(b.status, next);
@@ -129,15 +127,13 @@ export async function createBooking(user: User, input: unknown) {
         }[] = [];
         let title = '', bundleDiscount = 0;
         if (data.bundleId) {
-            const bundle = (await bundles(data.eventDate)).find((b) => b.id === data.bundleId);
+            const bundle = (await bundles(data.eventDate, false, data.bundleId))[0];
             assert(bundle?.ready, 'This bundle is not yet ready for booking.');
             assert(bundle.available, 'At least one bundle provider is unavailable on this date.');
             title = bundle.name;
             bundleDiscount = bundle.discount_percent;
             for (const item of bundle.items) {
-                const s = (await service(item.service_id));
-                assert(s, 'A service in this bundle is no longer available.');
-                assert(data.guests >= s.min_guests && data.guests <= s.max_guests, `${s.title} supports ${s.min_guests}–${s.max_guests} guests.`);
+                assert(data.guests >= item.min_guests && data.guests <= item.max_guests, `${item.service_title} supports ${item.min_guests}–${item.max_guests} guests.`);
                 selected.push({
                     providerId: item.provider_id,
                     serviceId: item.service_id,
@@ -153,35 +149,39 @@ export async function createBooking(user: User, input: unknown) {
             }
         }
         else {
-            const packageRow = (await one<{
-                service_id: string;
-            }>('SELECT service_id FROM packages WHERE id=? AND active=1', data.packageId!));
-            assert(packageRow, 'Package not found.');
-            const s = (await service(packageRow.service_id));
-            assert(s, 'This service is no longer available.');
-            const p = (await packagesFor(s.id)).find((p) => p.id === data.packageId)!;
-            assert((await available(s.provider_id, data.eventDate)), 'This provider is unavailable on that date.');
-            assert(data.guests >= s.min_guests && data.guests <= s.max_guests, `This service supports ${s.min_guests}–${s.max_guests} guests.`);
-            const addons = (await mapAsync(data.addons, async (addonId) => {
-                const a = (await one<{
-                    name: string;
-                    price: number;
-                }>('SELECT name,price FROM addons WHERE id=? AND service_id=? AND active=1', addonId, s.id));
-                assert(a, 'An add-on is no longer available.');
-                return a;
-            }));
+            const selection = await one<{
+                service_id: string; package_id: string; package_name: string; price: number;
+                inclusions: string; exclusions: string; terms: string; provider_id: string;
+                title: string; category_id: string; min_guests: number; max_guests: number;
+            }>(`SELECT s.id service_id,k.id package_id,k.name package_name,k.price,k.inclusions,k.exclusions,k.terms,
+                s.provider_id,s.title,s.category_id,s.min_guests,s.max_guests
+              FROM packages k JOIN services s ON s.id=k.service_id JOIN providers p ON p.id=s.provider_id
+              JOIN users u ON u.id=p.user_id JOIN categories c ON c.id=s.category_id
+              WHERE k.id=? AND k.active=1 AND s.status='ACTIVE' AND s.moderated=0 AND u.status='ACTIVE' AND c.active=1`, data.packageId!);
+            assert(selection, 'Package or service is no longer available.');
+            assert((await available(selection.provider_id, data.eventDate)), 'This provider is unavailable on that date.');
+            assert(data.guests >= selection.min_guests && data.guests <= selection.max_guests, `This service supports ${selection.min_guests}–${selection.max_guests} guests.`);
             assert(new Set(data.addons).size === data.addons.length, 'Duplicate add-ons are not allowed.');
-            title = s.title;
+            const addons = data.addons.length
+                ? await all<{ id: string; name: string; price: number }>(
+                    `SELECT id,name,price FROM addons WHERE service_id=? AND active=1
+                     AND id IN (SELECT value FROM jsonb_array_elements_text(?::text::jsonb))`,
+                    selection.service_id,
+                    JSON.stringify(data.addons),
+                )
+                : [];
+            assert(addons.length === data.addons.length, 'An add-on is no longer available.');
+            title = selection.title;
             selected.push({
-                providerId: s.provider_id,
-                serviceId: s.id,
-                packageId: p.id,
-                title: s.title,
-                packageName: p.name,
-                inclusions: p.inclusions,
-                terms: `${p.terms}\nExclusions: ${p.exclusions}`,
-                price: p.price + addons.reduce((n, a) => n + a.price, 0),
-                categoryId: s.category_id,
+                providerId: selection.provider_id,
+                serviceId: selection.service_id,
+                packageId: selection.package_id,
+                title: selection.title,
+                packageName: selection.package_name,
+                inclusions: selection.inclusions,
+                terms: `${selection.terms}\nExclusions: ${selection.exclusions}`,
+                price: selection.price + addons.reduce((n, a) => n + a.price, 0),
+                categoryId: selection.category_id,
                 addons,
             });
         }

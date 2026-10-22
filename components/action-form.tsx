@@ -53,8 +53,9 @@ export function ActionForm({
         if (reset) form.current?.reset();
         if (result.redirect) {
           router.push(result.redirect);
+        } else {
+          router.refresh();
         }
-        router.refresh();
       }
     } catch {
       setResult({ error: 'Unable to reach the server. Please try again.' });

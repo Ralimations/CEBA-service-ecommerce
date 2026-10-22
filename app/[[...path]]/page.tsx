@@ -1,6 +1,7 @@
 import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
 import { Sparkles } from 'lucide-react';
+import { ResponsiveImage } from '@/components/responsive-image';
 import { currentUser, requireUser, homeFor } from '@/server/auth';
 import { Suspense } from 'react';
 import { Sidebar } from '@/components/navigation';
@@ -48,7 +49,7 @@ async function RouteContent({ params, searchParams }: Props) {
     if (root === 'browse' && path.length === 1)
         return <Browse search={search}/>;
     if (root === 'services' && section && path.length === 2)
-        return <ServiceDetail serviceId={section} date={search.date} user={user}/>;
+        return <ServiceDetail serviceId={section} date={search.date} selectedPackageId={search.package} user={user}/>;
     if (root === 'providers' && section && path.length === 2)
         return <ProviderDetail providerId={section} date={search.date}/>;
     if (root === 'bundles' && path.length <= 2)
@@ -58,7 +59,7 @@ async function RouteContent({ params, searchParams }: Props) {
             redirect(homeFor(user.role));
         return (<main className="auth-layout">
         <div className="auth-visual">
-          <img src="/images/hero.jpg" alt="A beautiful celebration waiting to happen"/>
+          <ResponsiveImage src="/images/hero.webp" alt="A beautiful celebration waiting to happen" loading="eager" fetchPriority="high" />
           <div>
             <Sparkles size={34}/>
             <h1>

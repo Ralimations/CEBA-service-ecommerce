@@ -54,6 +54,8 @@ export function Handshake({
                 <img
                   src={image}
                   alt={`${gate === 'START' ? 'Check-in' : 'Completion'} verification QR code`}
+                  width={256}
+                  height={256}
                 />
               )}
               <strong className="verification-code">{code}</strong>

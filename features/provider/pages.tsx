@@ -9,6 +9,7 @@ import { ActionForm, ActionButton } from '@/components/action-form';
 import { BookingCard } from '@/components/cards';
 import { money, dateLabel, today } from '@/lib/format';
 import { expireDueBookingsFor } from '@/server/bookings';
+import { ResponsiveImage } from '@/components/responsive-image';
 export async function ProviderOverview({ user }: {
     user: User;
 }) {
@@ -148,7 +149,7 @@ export async function ProviderProfile({ user }: {
         <SectionHeading title="Your portfolio" description={`${portfolio.length} of ${p.vip ? 30 : 8} images · use HTTPS URLs or local /images/ assets.`}/>
         <div className="portfolio-grid">
           {portfolio.map((i) => (<figure key={i.id}>
-              <img src={i.image} alt={i.caption}/>
+              <ResponsiveImage src={i.image} alt={i.caption} />
               <figcaption>{i.caption}</figcaption>
               <ActionButton action="portfolio.save" data={{ id: i.id }} label="Remove image"/>
             </figure>))}

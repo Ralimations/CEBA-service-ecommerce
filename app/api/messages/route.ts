@@ -9,7 +9,13 @@ export async function GET(request: NextRequest) {
   try {
     const user = await currentUser();
     const itemId = z.string().uuid().parse(request.nextUrl.searchParams.get('itemId'));
-    return NextResponse.json(await readConversation(user!, itemId), {
+    const beforeAt = request.nextUrl.searchParams.get('beforeAt');
+    const beforeId = request.nextUrl.searchParams.get('beforeId');
+    assert((beforeAt === null) === (beforeId === null), 'Invalid message cursor.', 400);
+    const before = beforeAt && beforeId
+      ? { createdAt: z.string().datetime({ offset: true }).parse(beforeAt), id: z.string().uuid().parse(beforeId) }
+      : undefined;
+    return NextResponse.json(await readConversation(user!, itemId, before), {
       headers: { 'Cache-Control': 'private, no-store, max-age=0' },
     });
   } catch (error) {

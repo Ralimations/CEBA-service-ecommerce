@@ -14,6 +14,7 @@ export function BookingForm({
   addons = [],
   bundle,
   date,
+  selectedPackageId,
 }: {
   user: User | null;
   service?: Service;
@@ -21,13 +22,18 @@ export function BookingForm({
   addons?: { id: string; name: string; price: number }[];
   bundle?: Bundle;
   date?: string;
+  selectedPackageId?: string;
 }) {
-  const [packageId, setPackageId] = useState(packages[0]?.id || '');
+  const initialPackageId = packages.some((item) => item.id === selectedPackageId)
+    ? selectedPackageId!
+    : packages[0]?.id || '';
+  const [packageId, setPackageId] = useState(initialPackageId);
   const [selectedAddons, setSelectedAddons] = useState<string[]>([]);
   const [voucher, setVoucher] = useState('');
   const [discount, setDiscount] = useState(0);
   const [quoteMessage, setQuoteMessage] = useState('');
   const [quoteBusy, setQuoteBusy] = useState(false);
+  const selectedPackage = packages.find((item) => item.id === packageId);
   const subtotal = bundle
     ? bundle.total
     : (packages.find((p) => p.id === packageId)?.price || 0) +
@@ -65,6 +71,11 @@ export function BookingForm({
         <CalendarDays size={22} />
       </div>
       <p>Tell us a little about your celebration.</p>
+      {selectedPackageId && selectedPackage && (
+        <p className="small-note" role="status">
+          Selected package: <strong>{selectedPackage.name}</strong> · {money(selectedPackage.price)}
+        </p>
+      )}
       {bundle && <Badge tone="green">{bundle.discount_percent}% bundle savings included</Badge>}
       {bundle && !bundle.ready ? (
         <p className="notice">

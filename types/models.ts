@@ -84,6 +84,8 @@ export type BundleItem = {
   package_name: string;
   service_title: string;
   service_id: string;
+  min_guests: number;
+  max_guests: number;
   user_id: string;
   category_id: string;
   service_status: string;

@@ -13,6 +13,7 @@
     "typecheck": "next typegen && tsc --noEmit",
     "lint": "eslint .",
     "test": "tsx tests/isolated.ts",
+    "test:cache": "node --import tsx --test tests/cache-invalidation.test.ts",
     "verify:phase2": "tsx tests/verify-phase2.ts",
     "verify:release": "tsx tests/verify-release.ts",
     "db:migrate": "tsx database/manage.ts migrate",
@@ -20,6 +21,7 @@
     "test:smoke": "tsx tests/smoke.ts",
     "test:e2e": "playwright test",
     "test:browser-isolated": "tsx tests/browser-isolated.ts",
+    "dev:local-demo": "tsx tests/local-demo.ts",
     "test:serve": "tsx tests/serve.ts",
     "format": "prettier --write app components config database features lib server tests types *.ts *.mjs *.json",
     "format:check": "prettier --check app components config database features lib server tests types *.ts *.mjs *.json"

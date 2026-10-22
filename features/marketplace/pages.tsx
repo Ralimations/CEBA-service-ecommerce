@@ -10,6 +10,7 @@ import { ServiceCard, BundleCard, ProviderMini } from '@/components/cards';
 import { Badge, Rating, Price, Heading, SectionHeading, Empty, Panel, Field, Inclusions, TrustNote, } from '@/components/ui';
 import { BookingForm } from './booking-form';
 import { dateLabel, today } from '@/lib/format';
+import { ResponsiveImage } from '@/components/responsive-image';
 const icons: Record<string, typeof Camera> = {
     Camera,
     Utensils,
@@ -25,15 +26,24 @@ const icons: Record<string, typeof Camera> = {
 export async function Home({ date }: {
     date?: string;
 }) {
-    const picks = (await services({ placement: 'HOMEPAGE' })).filter((s, i, list) => list.findIndex((x) => x.provider_id === s.provider_id) === i)
+    const [pickServices, topServices, welcomeSettings, availableServices, categories, homeBundles] = await Promise.all([
+        services({ placement: 'HOMEPAGE' }),
+        services({ sort: 'rating', placement: 'ORGANIC' }),
+        settings(),
+        date ? services({ date, available: '1' }) : Promise.resolve([]),
+        activeCategories(),
+        bundles(),
+    ]);
+    const uniqueProviders = (list: typeof pickServices) => list.filter((s, i) => list.findIndex((x) => x.provider_id === s.provider_id) === i);
+    const picks = uniqueProviders(pickServices)
         .slice(0, 4);
-    const top = (await services({ sort: 'rating', placement: 'ORGANIC' })).filter((s, i, list) => list.findIndex((x) => x.provider_id === s.provider_id) === i)
+    const top = uniqueProviders(topServices)
         .slice(0, 4);
     return (<>
       <div className="promo-strip">
         <Sparkles size={13}/>A little welcome for your first celebration.{' '}
         <Link href="/vouchers">
-          Get {(await settings()).welcomePercent}% off with WELCOME10 <ArrowRight size={13}/>
+          Get {welcomeSettings.welcomePercent}% off with WELCOME10 <ArrowRight size={13}/>
         </Link>
       </div>
       <main className="home-main">
@@ -66,7 +76,7 @@ export async function Home({ date }: {
             </div>
           </div>
           <div className="hero-visual">
-            <img src="/images/hero.jpg" alt="An intimate outdoor celebration with a beautifully set table" fetchPriority="high"/>
+            <ResponsiveImage src="/images/hero.webp" alt="An intimate outdoor celebration with a beautifully set table" loading="eager" fetchPriority="high" />
             <span className="hero-caption">FOR THE MOMENTS THAT MATTER.</span>
             <div className="hero-floating">
               <span className="floating-icon">
@@ -121,14 +131,14 @@ export async function Home({ date }: {
         {date && (<section className="home-section">
             <SectionHeading title={`Available for ${dateLabel(date)}`} description="Teams with room for your chosen celebration date." href={`/browse?date=${date}&available=1`}/>
             <div className="service-grid">
-              {(await services({ date, available: '1' })).slice(0, 4)
+              {availableServices.slice(0, 4)
                 .map((s) => (<ServiceCard key={s.id} service={s} date={date}/>))}
             </div>
           </section>)}
         <section className="home-section categories-section">
           <SectionHeading title="Every detail, covered." description="Start with what you need. We’ll help you find your people." href="/browse" label="Explore all services"/>
           <div className="category-grid">
-            {(await activeCategories()).map((c) => {
+            {categories.map((c) => {
             const Icon = icons[c.icon] || Sparkles;
             return (<Link href={`/browse?category=${c.id}`} key={c.id}>
                   <span className={`category-icon ${c.id}`}>
@@ -170,7 +180,7 @@ export async function Home({ date }: {
             </span>
           </div>
           <div className="home-bundle">
-            {(await bundles()).slice(0, 1)
+            {homeBundles.slice(0, 1)
             .map((b) => (<BundleCard key={b.id} bundle={b}/>))}
           </div>
         </section>
@@ -340,15 +350,19 @@ export async function Browse({ search }: {
       </div>
     </main>);
 }
-export async function ServiceDetail({ serviceId, date, user, }: {
+export async function ServiceDetail({ serviceId, date, selectedPackageId: requestedPackageId, user, }: {
     serviceId: string;
     date?: string;
+    selectedPackageId?: string;
     user: User | null;
 }) {
     const content = await serviceContent(serviceId);
     if (!content)
         notFound();
     const { service: s, provider: p, packages: packs, addons, reviews } = content;
+    const selectedPackageId = packs.some((pack) => pack.id === requestedPackageId)
+        ? requestedPackageId
+        : undefined;
     return (<main className="container page-space">
       <div className="breadcrumbs">
         <Link href="/browse">Explore services</Link>
@@ -373,7 +387,7 @@ export async function ServiceDetail({ serviceId, date, user, }: {
         </div>
         <Price value={s.base_price} from/>
       </div>
-      <img className="detail-cover" src={s.image} alt={s.title}/>
+      <ResponsiveImage className="detail-cover" src={s.image} alt={s.title} />
       <div className="detail-layout">
         <div>
           <ProviderMini provider={p}/>
@@ -408,17 +422,17 @@ export async function ServiceDetail({ serviceId, date, user, }: {
                     <summary>Package terms</summary>
                     <p>{pack.terms}</p>
                   </details>
-                  <a href="#booking" className="text-link">
+                  <Link href={`/services/${s.id}?package=${encodeURIComponent(pack.id)}${date ? `&date=${encodeURIComponent(date)}` : ''}#booking`} className="text-link">
                     Choose your package
                     <ArrowRight size={15}/>
-                  </a>
+                  </Link>
                 </Panel>))}
             </div>
           </section>
           <ReviewSection list={reviews}/>
         </div>
         <aside id="booking">
-          <BookingForm user={user} service={s} packages={packs} addons={addons} date={date}/>
+          <BookingForm key={selectedPackageId || 'default'} user={user} service={s} packages={packs} addons={addons} date={date} selectedPackageId={selectedPackageId}/>
           <TrustNote />
         </aside>
       </div>
@@ -462,10 +476,10 @@ export async function ProviderDetail({ providerId, date }: {
     const isAvailable = date ? (listing.length ? listing[0].available : await available(p.id, date)) : true;
     const byService = Map.groupBy(packages, k => k.service_id);
     return (<main className="container page-space">
-      <img className="profile-cover" src={p.cover} alt={`${p.business_name} portfolio cover`}/>
+      <ResponsiveImage className="profile-cover" src={p.cover} alt={`${p.business_name} portfolio cover`} />
       <div className="provider-profile-head">
         <span className="avatar huge">
-          {p.avatar ? <img src={p.avatar} alt="Provider logo"/> : p.business_name[0]}
+          {p.avatar ? <ResponsiveImage src={p.avatar} alt="Provider logo"/> : p.business_name[0]}
         </span>
         <div>
           <h1>{p.business_name}</h1>
@@ -539,7 +553,7 @@ export async function ProviderDetail({ providerId, date }: {
         <SectionHeading title="A glimpse of the good moments"/>
         <div className="portfolio-grid">
           {portfolio.map((i) => (<figure key={i.id}>
-              <img src={i.image} alt={i.caption}/>
+              <ResponsiveImage src={i.image} alt={i.caption} />
               <figcaption>{i.caption}</figcaption>
             </figure>))}
         </div>
@@ -595,7 +609,7 @@ export async function BundleDetail({ bundleId, date, user, }: {
         notFound();
     return (<main className="container page-space">
       <Heading eyebrow="CURATED BUNDLE" title={b.name} description={b.description}/>
-      <img className="detail-cover" src={b.image} alt={b.name}/>
+      <ResponsiveImage className="detail-cover" src={b.image} alt={b.name} />
       <div className="detail-layout">
         <div>
           <SectionHeading title="Meet your celebration team" description="Each supplier has approved these package terms. Your booking reserves them together."/>

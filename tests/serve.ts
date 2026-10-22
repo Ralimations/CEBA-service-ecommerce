@@ -3,8 +3,9 @@ import { migrate, closeDb } from '@/server/db';
 import { seed } from '@/database/seed';
 const configured = process.env.POSTGRES_URL;
 const parsed = configured ? new URL(configured) : null;
+const isolatedDbPort = Number(process.env.ISOLATED_DB_PORT || 15441);
 const pglite = process.env.TEST_ISOLATED === '1' && parsed?.hostname === '127.0.0.1' &&
-  parsed.port === '15441' && parsed.pathname === '/postgres';
+  Number(parsed.port) === isolatedDbPort && parsed.pathname === '/postgres';
 const realPostgres = !!configured && process.env.TEST_DATABASE_URL === configured &&
   ['127.0.0.1', 'localhost'].includes(parsed?.hostname || '') &&
   parsed?.username === 'phase2_test' && parsed.pathname === '/soiree_phase2_test';

@@ -3,11 +3,12 @@ import { ArrowUpRight, MapPin, ShieldCheck, CalendarDays } from 'lucide-react';
 import type { Service, Bundle, Booking, Provider } from '@/types/models';
 import { Badge, Rating, Price, Status } from './ui';
 import { dateLabel, money } from '@/lib/format';
+import { ResponsiveImage } from './responsive-image';
 export function ServiceCard({ service, date }: { service: Service; date?: string }) {
   return (
     <article className="service-card">
       <Link className="card-image" href={`/services/${service.id}${date ? `?date=${date}` : ''}`}>
-        <img src={service.image} alt={service.title} loading="lazy" />
+        <ResponsiveImage src={service.image} alt={service.title} />
         {!!service.featured && <span className="image-label">Sponsored</span>}
         {!service.available && <span className="unavailable-label">Unavailable on this date</span>}
         <span className="card-arrow">
@@ -39,7 +40,7 @@ export function BundleCard({ bundle, date }: { bundle: Bundle; date?: string }) 
   return (
     <article className="bundle-card">
       <Link href={`/bundles/${bundle.id}${date ? `?date=${date}` : ''}`} className="bundle-image">
-        <img src={bundle.image} alt={bundle.name} loading="lazy" />
+        <ResponsiveImage src={bundle.image} alt={bundle.name} />
         <span className="image-label">Save {bundle.discount_percent}%</span>
       </Link>
       <div className="card-body">

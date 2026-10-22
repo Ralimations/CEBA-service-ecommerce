@@ -9,7 +9,7 @@ import type { Package, Review } from '@/types/models';
 export async function catalog() {
   'use cache: remote';
   cacheLife({ stale: 30, revalidate: 30, expire: 60 });
-  cacheTag('marketplace', 'services', 'providers', 'settings', 'categories');
+  cacheTag('services', 'providers', 'settings', 'categories');
   return query.marketplaceServices();
 }
 export async function settings() {

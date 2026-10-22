@@ -9,6 +9,7 @@ import type { Service, Package } from '@/types/models';
 import { Heading, Panel, Field, Status, Empty, Price, SectionHeading, Badge, } from '@/components/ui';
 import { ActionForm, ActionButton } from '@/components/action-form';
 import { money } from '@/lib/format';
+import { ResponsiveImage } from '@/components/responsive-image';
 export async function ProviderServices({ user }: {
     user: User;
 }) {
@@ -21,7 +22,7 @@ export async function ProviderServices({ user }: {
           </Link>}/>
       <div className="service-grid provider-service-grid">
         {list.map((s) => (<Panel key={s.id}>
-            <img className="management-image" src={s.image} alt={s.title}/>
+            <ResponsiveImage className="management-image" src={s.image} alt={s.title} />
             <div className="row between">
               <Status value={s.status}/>
               {!!s.moderated && <Badge tone="red">Disabled by admin</Badge>}

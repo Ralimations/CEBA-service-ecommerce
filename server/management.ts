@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { all, one, run, insert, transaction, id, now, notify, audit, settings } from './db';
+import { all, one, run, insert, transaction, id, now, notify, notifyMany, audit, settings } from './db';
 import { providerByUser, providers, bundles, booking } from './queries';
 import { assert, requireRole, badgeEligible, type User } from '@/lib/domain';
 import { eventDate } from './bookings';
@@ -203,10 +203,10 @@ export async function saveBundle(user: User, input: unknown) {
             assert((await one('SELECT id FROM bundles WHERE id=?', data.id)), 'Bundle not found.');
             (await run("UPDATE bundles SET name=?,description=?,image=?,discount_percent=?,status='DRAFT' WHERE id=?", data.name, data.description, data.image || '/images/event.jpg', data.discount, data.id));
             (await run("UPDATE bundle_items SET approval='PENDING',responded_at=NULL WHERE bundle_id=?", bundleId));
-            for (const item of (await all<{
+            const recipients = await all<{
                 user_id: string;
-            }>('SELECT p.user_id FROM bundle_items i JOIN providers p ON p.id=i.provider_id WHERE i.bundle_id=?', bundleId)))
-                (await notify(item.user_id, 'Bundle terms changed', 'Review the updated bundle discount and participation terms.', '/provider/bundles'));
+            }>('SELECT p.user_id FROM bundle_items i JOIN providers p ON p.id=i.provider_id WHERE i.bundle_id=?', bundleId);
+            await notifyMany(recipients.map(item => item.user_id), 'Bundle terms changed', 'Review the updated bundle discount and participation terms.', '/provider/bundles');
         }
         else
             (await insert('bundles', {
@@ -536,10 +536,10 @@ export async function createTicket(user: User, input: unknown) {
         subject: data.subject,
         message: data.message,
     }));
-    for (const a of (await all<{
+    const admins = await all<{
         id: string;
-    }>("SELECT id FROM users WHERE role='ADMIN'")))
-        (await notify(a.id, 'New support request', data.subject, '/admin/support'));
+    }>("SELECT id FROM users WHERE role='ADMIN'");
+    await notifyMany(admins.map(admin => admin.id), 'New support request', data.subject, '/admin/support');
     return {
         message: 'Support ticket created. Responses will appear here and in your notifications.',
     };

@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
             .object({ action: z.string(), data: z.record(z.string(), z.unknown()) })
             .parse(await request.json());
         const result = await executeAction(user, body.action, body.data);
-        invalidatePublicData(body.action);
+        invalidatePublicData(body.action, body.data);
         return NextResponse.json(result);
     }
     catch (error) {

@@ -53,7 +53,7 @@ function HeaderView({ user, unread, pending = false, path }: { user: User | null
       <div className="header-inner">
         <Link href="/" className="brand" aria-label={`${platform.name} home`}>
           <span className="brand-mark">
-            <img src="/soiree-source-logo.png" alt="SoiréeSource logo" className="brand-image" />
+            <img src="/soiree-source-logo.webp" alt="SoiréeSource logo" className="brand-image" width={320} height={336} />
           </span>
           <span>
             {platform.name}

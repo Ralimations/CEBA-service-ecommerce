@@ -51,7 +51,7 @@ async function conversation(user: User, itemId: string, write = false) {
   return { ...row, canSend: participant && !row.disputed };
 }
 
-export async function readConversation(user: User, itemId: string) {
+export async function readConversation(user: User, itemId: string, before?: { createdAt: string; id: string }) {
   enabled();
   const access = await conversation(user, itemId);
   const timestamp = now();
@@ -68,11 +68,15 @@ export async function readConversation(user: User, itemId: string) {
     id: string; sender_id: string; recipient_id: string; body: string; created_at: string; read_at: string | null;
   }>(`SELECT id,sender_id,recipient_id,body,created_at,read_at FROM (
        SELECT id,sender_id,recipient_id,body,created_at,read_at FROM booking_messages
-       WHERE booking_item_id=? ORDER BY created_at DESC,id DESC LIMIT 200
-     ) latest ORDER BY created_at,id`, itemId);
+       WHERE booking_item_id=? AND (?::timestamptz IS NULL OR created_at<? OR (created_at=? AND id<?))
+       ORDER BY created_at DESC,id DESC LIMIT 51
+     ) latest ORDER BY created_at,id`, itemId, before?.createdAt ?? null,
+    before?.createdAt ?? null, before?.createdAt ?? null, before?.id ?? '');
+  const hasMore = rows.length > 50;
+  const messages = hasMore ? rows.slice(1) : rows;
   return {
     itemId, bookingId: access.booking_id, providerName: access.provider_name,
-    canSend: access.canSend, messages: rows, unread,
+    canSend: access.canSend, messages, hasMore, unread,
   };
 }
 

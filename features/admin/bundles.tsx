@@ -6,6 +6,7 @@ import { bundles } from '@/server/queries';
 import { Heading, Panel, Field, Status, DataTable, Price, Empty } from '@/components/ui';
 import { ActionForm, ActionButton } from '@/components/action-form';
 import { money } from '@/lib/format';
+import { ResponsiveImage } from '@/components/responsive-image';
 export async function AdminBundles() {
     const list = (await bundles(undefined, true));
     return (<>
@@ -15,7 +16,7 @@ export async function AdminBundles() {
           </Link>}/>
       <div className="management-grid">
         {list.map((b) => (<Panel key={b.id}>
-            <img className="management-image" src={b.image} alt={b.name}/>
+            <ResponsiveImage className="management-image" src={b.image} alt={b.name} />
             <Status value={b.status}/>
             <h3>{b.name}</h3>
             <p>{b.description}</p>

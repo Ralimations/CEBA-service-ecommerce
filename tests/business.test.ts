@@ -482,8 +482,10 @@ test('admin release requires dispute review and confirmation; audit and ledger a
     assert.equal((await booking(bookingId, c)).escrow_status, 'RELEASED');
     assert.ok((await all<{ id: string }>('SELECT id FROM escrow_transactions WHERE booking_id=? LIMIT 1', bookingId)).length > 0);
     (await assert.rejects(async () => (await run('UPDATE escrow_transactions SET amount=0 WHERE booking_id=?', bookingId))));
+    await closeDb();
     assert.ok((await all<{ id: string }>('SELECT id FROM booking_events WHERE booking_id=? LIMIT 1', bookingId)).length > 0);
     (await assert.rejects(async () => (await run('DELETE FROM booking_events WHERE booking_id=?', bookingId))));
+    await closeDb();
     assert.ok((await all<{ id: string }>('SELECT id FROM audit_log LIMIT 1')).length > 0);
     (await assert.rejects(async () => (await run('DELETE FROM audit_log'))));
 });

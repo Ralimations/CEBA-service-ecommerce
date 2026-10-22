@@ -10,6 +10,7 @@ export default defineConfig([
   globalIgnores([
     '.next/**',
     '.next-test/**',
+    '.next-local-demo/**',
     'data/**',
     'artifacts/**',
     'test-results/**',

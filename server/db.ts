@@ -244,6 +244,22 @@ export async function notify(
   });
 }
 
+export async function notifyMany(
+  userIds: Iterable<string>,
+  title: string,
+  body: string,
+  href = '/notifications',
+) {
+  const recipients = [...new Set(userIds)];
+  if (!recipients.length) return;
+  await run(
+    `INSERT INTO notifications(id,user_id,title,body,href)
+     SELECT item.id,item.user_id,item.title,item.body,item.href
+     FROM jsonb_to_recordset(?::text::jsonb) AS item(id text,user_id text,title text,body text,href text)`,
+    JSON.stringify(recipients.map(user_id => ({ id: id(), user_id, title, body, href }))),
+  );
+}
+
 export async function admins(
   title: string,
   body: string,
