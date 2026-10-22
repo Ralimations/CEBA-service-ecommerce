@@ -5526,6 +5526,62 @@ label[for],
   .dashboard-main { padding-inline: 12px; }
 }
 
+/* Keep service imagery and the card footer aligned across each result row. */
+.service-card {
+  display: flex;
+  flex-direction: column;
+}
+.service-card > .card-image {
+  position: relative;
+  display: block;
+  flex: 0 0 auto;
+  width: 100%;
+  overflow: hidden;
+}
+.service-card > .card-image > img {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  display: block;
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+.service-card .image-label,
+.service-card .unavailable-label,
+.service-card .card-arrow { z-index: 1; }
+.service-card > .card-body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: stretch;
+  width: 100%;
+}
+.service-card .card-bottom {
+  width: 100%;
+  margin-top: auto;
+}
+.service-card .card-bottom .badge {
+  display: inline-flex;
+  min-width: 48px;
+  min-height: 20px;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+.filters input[type='checkbox']:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+.filters select:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  box-shadow: none;
+}
+
 /* Keep navigation hover and keyboard-focus shapes soft and easy to see. */
 .top-nav a {
   display: inline-flex;
