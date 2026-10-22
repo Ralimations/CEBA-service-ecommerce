@@ -28,7 +28,7 @@ The project owner has authorized the Phase 2 merge conditionally; no separate st
 - [ ] Merge only the exact verified commit after all backup/restore and CI gates pass.
 - [ ] Verify the production deployment, non-destructive smoke paths, logs, database connectivity, and production flag values.
 
-Current status: local release verification is recorded in `PHASE2_PRODUCTION_RELEASE_REPORT.md`. Production identity and backup/restore are not verifiable in this environment, so migration, push, merge, and deployment remain stopped.
+The previous status below reflects the RC2/compliance checkpoint before the final release. Current final-release evidence and deployment outcome are in `PHASE2_FINAL_DEPLOYMENT_REPORT.md`.
 
 ## Database migration order
 
@@ -42,7 +42,7 @@ Current status: local release verification is recorded in `PHASE2_PRODUCTION_REL
 - [ ] Confirm migration reruns are idempotent and the append-only triggers still reject updates/deletes.
 - [ ] Confirm historical pending bookings retain a `NULL` response deadline. Do not backfill or expire them without a separate approved plan.
 - [ ] Confirm migration review-history tables contain no unintended seeded or test data.
-- [ ] Apply to production only after the project identity, actual pending migration set, backward compatibility, protected backup, isolated restore, and rehearsal all pass. The project owner has conditionally authorized the release; no production migration has been executed by this branch.
+- [x] Apply to production only after project identity, pending migration set, backward compatibility, protected backup, isolated restore, and rehearsal pass. Production migrations 002–008 were applied after all gates passed; see the final deployment report.
 
 ## Environment prerequisites
 
@@ -64,13 +64,13 @@ Current status: local release verification is recorded in `PHASE2_PRODUCTION_REL
 - [x] Capture and review baseline and post-redesign screenshots across desktop, tablet, and mobile; see `artifacts/EMERALD_VISUAL_INDEX.md`.
 - [x] Capture selected dark-mode route screenshots and run axe/WCAG 2.2 AA across 39 routes in both themes (zero findings); see `artifacts/EMERALD_VISUAL_INDEX.md` and `artifacts/axe-wcag22aa.json`.
 - [ ] Complete manual keyboard, dialog, and assistive-technology review before claiming full accessibility completion.
-- [ ] Verify existing payment simulation, dual QR handshake, service-fee calculations, cache behavior, and public browsing.
+- [x] Automated release verification covered the existing simulated checkout, dual QR handshake, Service Fee calculations, and browsing. Continue routine post-release cache checks.
 
 ## Feature flags, monitoring, and cache
 
-- [ ] No runtime feature flag currently gates appeals, deadlines, or cancellation reasons; if staged rollout is required, add an explicit server-side flag before deployment.
+- [x] No additional rollout flags were required for public appeals or deadline reconciliation. Messaging, near-event cancellation review, and loyalty XP use the Production flags listed in the final report.
 - [ ] Monitor appeal queue volume and rate-limit table growth. Current per-email hashing/honeypot is lightweight and can be bypassed by distributed or varied addresses.
-- [ ] Configure `CRON_SECRET` and deploy the prepared daily cron before relying on scheduled expiry. Access/action reconciliation remains authoritative between runs.
+- [x] Configure Production-only `CRON_SECRET` and deploy the daily cron. Access/action reconciliation remains authoritative between runs; exact invocation time is not guaranteed.
 - [ ] Review admin audit entries for appeal and cancellation moderation decisions.
 - [ ] Recheck public cache invalidation and ensure support/booking/admin data is never placed in shared public caches.
 
@@ -83,13 +83,24 @@ Current status: local release verification is recorded in `PHASE2_PRODUCTION_REL
 
 ## Deploy gate
 
-- [ ] Confirm the Vercel plan supports the configured cron cadence and set `CRON_SECRET` in the intended environment.
-- [ ] Keep provisional features off in Production until database dependencies, authorization, and operating requirements are verified. Keep `FEATURE_LOYALTY_MONETARY_REWARDS` and `FEATURE_SIMULATED_DEPOSITS` off; the loyalty value is only a simulation preview and no real monetary benefit is active.
-- [ ] Approve message-report categories, handling/retention policy and customer notice before enabling messaging in a real environment.
-- [ ] Confirm deadline reminder timing and cron deployment guarantees; the visit-driven reminder is not a scheduled delivery guarantee.
+- [x] Confirmed Vercel Hobby permits the configured once-daily cron and set `CRON_SECRET` in Production only.
+- [x] Before activation, verify Phase 2 schema dependencies and anonymous/participant authorization. Production flag state and remaining provisional policy follow-ups are recorded in the final deployment report. Keep `FEATURE_LOYALTY_MONETARY_REWARDS` and `FEATURE_SIMULATED_DEPOSITS` off; no real monetary benefit or payment flow is active.
+- [ ] Post-release governance follow-up: approve message-report categories, handling/retention policy, and customer notice; messaging is enabled by the owner's final release authorization, and this product policy remains unresolved.
+- [x] Document that the configured daily cron is not an exact-time guarantee; visit/access-driven reconciliation remains available. Review whether reminder timing meets the product's eventual operating expectations.
 
 - [x] Project owner has authorized a conditional Phase 2 merge; no separate stakeholder meeting is required.
-- [ ] PostgreSQL and browser evidence is attached to the release record.
-- [ ] Preview database isolation and migration order are verified.
-- [ ] Production data precautions, backups, monitoring, and rollback owner are confirmed.
-- [ ] Only after all technical gates pass, merge the exact verified commit and deploy through the existing Vercel project integration.
+- [x] PostgreSQL and browser evidence is recorded in `PHASE2_FINAL_DEPLOYMENT_REPORT.md` and sanitized artifacts under `artifacts/`.
+- [x] Preview database isolation, workflow isolation, and migration order were verified.
+- [x] Production data precautions, protected backup, checksums, compatibility rehearsal, log query, and rollback reference are recorded.
+- [x] Merged exact verified commit `ec9602e135bb72625c1cd1fb699b34af5f2aabde` into `main`; existing Vercel integration deployed merge `acd20fd3d0cbcd9f4baf4a8e42704e2a82a82206`.
+
+## Final production release — completed 2026-10-14
+
+- [x] Vercel project/repository/branch and production Supabase identity verified; Preview had no database variables.
+- [x] Protected PostgreSQL 17 full backup created and archive inspected; restored all public application tables/objects to isolated PostgreSQL and verified hashes, schema metadata, and Phase 1 compatibility.
+- [x] Rehearsed and applied migrations 002–008. All 34 legacy application table hashes matched before/after; ledger is 1–8.
+- [x] `npm run verify:release`: 35/35 business, 13/13 Playwright, 1/1 feature-disabled, axe 39 routes × 2 themes with zero violations, build/typecheck/lint/safety probes passed.
+- [x] Live Production smoke: 72/72 browser assertions across 15 routes; 401 anonymous message/action/cron checks; no runtime exceptions or 500s.
+- [x] Nonmonetary flags and production cron credential set; simulated deposits and monetary rewards remain disabled.
+- [ ] Manual keyboard and assistive-technology review remains to be completed before claiming full accessibility review.
+- [ ] Continue monitoring after the initial smoke period. GitHub Actions could not start due to an external account billing lock; independent verification was completed and no remote CI success is claimed.

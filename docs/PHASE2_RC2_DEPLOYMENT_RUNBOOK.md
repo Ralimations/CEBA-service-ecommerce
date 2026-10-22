@@ -2,7 +2,7 @@
 
 This runbook is for a later explicitly authorized staging deployment. No staging URL or cloud configuration was verified during RC2.
 
-**Current release authority:** the project owner has authorized a conditional Phase 2 merge; a separate stakeholder meeting is not required. For the final production gate and rollback steps, use `PHASE2_PRODUCTION_RELEASE_REPORT.md`, `PHASE2_PRODUCTION_ROLLBACK_RUNBOOK.md`, and `PHASE2_RELEASE_CHECKLIST.md`. This RC2 document records staging preparation and must not override the backup/restore gate.
+**Historical RC2 runbook:** the project owner authorized and completed the conditional Phase 2 merge after all technical gates passed. For the actual production outcome, use `PHASE2_FINAL_DEPLOYMENT_REPORT.md`, `PHASE2_PRODUCTION_ROLLBACK_RUNBOOK.md`, and `PHASE2_RELEASE_CHECKLIST.md`. This RC2 document records staging preparation and predates the production release.
 
 ## Required access and evidence
 

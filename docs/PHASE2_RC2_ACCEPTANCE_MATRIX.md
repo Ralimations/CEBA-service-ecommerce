@@ -1,6 +1,6 @@
 # Phase 2 RC2 acceptance matrix
 
-Status reflects evidence available on 2026-10-14. “Pending” is not a pass.
+This is a historical RC2 acceptance checkpoint. “Pending” is not a pass. The completed conditional Phase 2 Production release supersedes these pre-release environment statuses; see `PHASE2_FINAL_DEPLOYMENT_REPORT.md`.
 
 | Acceptance criterion | Evidence | Status | Environment | Remaining risk |
 |---|---|---|---|---|
@@ -34,4 +34,4 @@ Status reflects evidence available on 2026-10-14. “Pending” is not a pass.
 | Remote synchronization/CI | Cached local feature ref equals starting tip; live Git fetch unavailable | Pending | Local refs only | Do not claim remote commit/run status |
 | Production deployment/smoke | Vercel settings unavailable; URL in PDF not accessible with available browser tools | Pending | None | No deployment, flag, cron, or production health claim |
 
-The exact final `npm run verify:release` result is recorded in `PHASE2_PRODUCTION_RELEASE_REPORT.md`. Production remains unchanged by this sprint.
+The exact final `npm run verify:release` result and subsequent Production outcome are recorded in `PHASE2_FINAL_DEPLOYMENT_REPORT.md`. The statement above is historical RC2 status, before final migration and deployment.

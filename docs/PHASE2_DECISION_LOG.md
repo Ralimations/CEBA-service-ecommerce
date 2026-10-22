@@ -80,5 +80,13 @@ The project owner is the product-acceptance authority for this assignment and ha
 - Whole-request expiry, one primary cancellation reason, the 48-hour urgent review window, and the 50/50 prototype ledger are reversible defaults. Their monetary effects remain absent and provisional policy flags default off.
 - `FEATURE_LOYALTY_MONETARY_REWARDS` now gates only a text preview of the PDF proposal. XP remains nonredeemable; no birthday data, new voucher, checkout change, refund, or fee assessment is introduced.
 - All user-facing seeded bundle terms use “Service Fee”; database storage and calculations retain the existing `platform_fee` field.
-- The final release brief's backup/restore rule is a hard technical gate. Production identity, production migration state, backup/restore, and Vercel settings could not be verified, so migration, push, merge, and deployment did not occur.
-- See `FINAL_PDF_COMPLIANCE_AUDIT.md`, `PHASE2_FEATURE_FLAG_MATRIX.md`, and `PHASE2_PRODUCTION_RELEASE_REPORT.md` for the final evidence and release status.
+- At the time of this compliance checkpoint, production identity, migration state, backup/restore, and Vercel settings had not been verified. This statement is historical and is superseded by the completed production release in `PHASE2_FINAL_DEPLOYMENT_REPORT.md`.
+- See `FINAL_PDF_COMPLIANCE_AUDIT.md`, `PHASE2_FEATURE_FLAG_MATRIX.md`, and `PHASE2_FINAL_DEPLOYMENT_REPORT.md` for the current evidence and release status.
+
+## Final production release (2026-10-14)
+
+- The owner authorized and completed the conditional release after the backup, isolated application restore, migration rehearsal, and complete local release checks passed.
+- Migrations 002–008 were applied to the verified production project. All 34 legacy public application table hashes matched before and after. Phase 1 public route smoke checks remained healthy.
+- Feature branch commit `ec9602e135bb72625c1cd1fb699b34af5f2aabde` was merged normally to `main` as `acd20fd3d0cbcd9f4baf4a8e42704e2a82a82206`; that merge is deployed to the existing Vercel Production project.
+- Messaging, provider cancellation review, and nonredeemable XP are enabled for this release. Their privacy/retention and provisional product-policy follow-ups remain open. Monetary rewards and simulated deposits remain disabled.
+- GitHub Actions could not start because the account was locked due to a billing issue. Local, restored-database, Preview-build, and production smoke evidence is recorded in the final deployment report; no remote CI test pass is claimed.

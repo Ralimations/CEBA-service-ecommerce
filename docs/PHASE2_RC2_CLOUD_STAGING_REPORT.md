@@ -73,4 +73,4 @@ The exact blockers and next steps are listed in [the RC2 deployment runbook](PHA
 - Local Vercel repo metadata identifies `ceba-service-ecommerce`; the current brief says `soiree-source`, and the PDF screenshot shows `soireesource.vercel.app`. The Supabase pooler endpoint does not reveal a project reference. Exact deployment/database identity remains unverified.
 - No Production schema read, migration-history query, backup, restore, push, merge, deployment, feature-flag change, cron activation, or production smoke test occurred.
 - The release brief requires a verified production backup restored in isolation before migration or merge. Since that cannot be completed here, production-changing steps stop at this gate.
-- Full PDF audit, updated flag matrix, final release report, and rollback runbook are available in the `docs/` directory. Local final `npm run verify:release` evidence is in `PHASE2_PRODUCTION_RELEASE_REPORT.md`.
+- Full PDF audit, updated flag matrix, final release report, and rollback runbook are available in the `docs/` directory. The production release supersedes the RC2 staging checkpoint; see `PHASE2_FINAL_DEPLOYMENT_REPORT.md`.
